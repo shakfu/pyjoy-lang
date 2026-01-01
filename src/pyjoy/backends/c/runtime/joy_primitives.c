@@ -9,6 +9,16 @@
 #include <math.h>
 #include <time.h>
 
+/* Global storage for command line arguments */
+static int joy_argc = 0;
+static char** joy_argv = NULL;
+
+/* Function to initialize argc/argv - call from main() */
+void joy_set_argv(int argc, char** argv) {
+    joy_argc = argc;
+    joy_argv = argv;
+}
+
 /* Helper macros */
 #define REQUIRE(n, op) \
     if (ctx->stack->depth < (n)) joy_error_underflow(op, n, ctx->stack->depth)
@@ -2086,6 +2096,200 @@ static void prim_cleave(JoyContext* ctx) {
     joy_value_free(&quot2);
 }
 
+/* ---------- Application Combinators ---------- */
+
+static void prim_app1(JoyContext* ctx) {
+    /* X [P] -> R : apply P to X, return single result */
+    REQUIRE(2, "app1");
+    JoyValue quot = POP();
+    JoyValue x = POP();
+
+    /* Save current stack */
+    JoyStack* saved = joy_stack_copy(ctx->stack);
+
+    /* Execute P on X */
+    joy_stack_clear(ctx->stack);
+    PUSH(x);
+    execute_quot(ctx, &quot);
+    JoyValue r = POP();
+
+    /* Restore original stack and push result */
+    joy_stack_free(ctx->stack);
+    ctx->stack = saved;
+    PUSH(r);
+
+    joy_value_free(&quot);
+}
+
+static void prim_app11(JoyContext* ctx) {
+    /* X Y [P] -> Y R : apply P to X, Y unchanged */
+    REQUIRE(3, "app11");
+    JoyValue quot = POP();
+    JoyValue y = POP();
+    JoyValue x = POP();
+
+    /* Save current stack */
+    JoyStack* saved = joy_stack_copy(ctx->stack);
+
+    /* Execute P on X */
+    joy_stack_clear(ctx->stack);
+    PUSH(x);
+    execute_quot(ctx, &quot);
+    JoyValue r = POP();
+
+    /* Restore original stack and push Y then result */
+    joy_stack_free(ctx->stack);
+    ctx->stack = saved;
+    PUSH(y);
+    PUSH(r);
+
+    joy_value_free(&quot);
+}
+
+static void prim_app12(JoyContext* ctx) {
+    /* X Y1 Y2 [P] -> Y1 Y2 R : apply P to X, Y1 Y2 unchanged */
+    REQUIRE(4, "app12");
+    JoyValue quot = POP();
+    JoyValue y2 = POP();
+    JoyValue y1 = POP();
+    JoyValue x = POP();
+
+    /* Save current stack */
+    JoyStack* saved = joy_stack_copy(ctx->stack);
+
+    /* Execute P on X */
+    joy_stack_clear(ctx->stack);
+    PUSH(x);
+    execute_quot(ctx, &quot);
+    JoyValue r = POP();
+
+    /* Restore original stack and push Y1, Y2, then result */
+    joy_stack_free(ctx->stack);
+    ctx->stack = saved;
+    PUSH(y1);
+    PUSH(y2);
+    PUSH(r);
+
+    joy_value_free(&quot);
+}
+
+static void prim_app2(JoyContext* ctx) {
+    /* X1 X2 [P] -> R1 R2 : apply P to X1 and X2 separately */
+    REQUIRE(3, "app2");
+    JoyValue quot = POP();
+    JoyValue x2 = POP();
+    JoyValue x1 = POP();
+
+    /* Save current stack */
+    JoyStack* saved = joy_stack_copy(ctx->stack);
+
+    /* Execute P on X1 */
+    joy_stack_clear(ctx->stack);
+    PUSH(x1);
+    execute_quot(ctx, &quot);
+    JoyValue r1 = POP();
+
+    /* Execute P on X2 */
+    joy_stack_clear(ctx->stack);
+    PUSH(x2);
+    execute_quot(ctx, &quot);
+    JoyValue r2 = POP();
+
+    /* Restore original stack and push results */
+    joy_stack_free(ctx->stack);
+    ctx->stack = saved;
+    PUSH(r1);
+    PUSH(r2);
+
+    joy_value_free(&quot);
+}
+
+static void prim_app3(JoyContext* ctx) {
+    /* X1 X2 X3 [P] -> R1 R2 R3 : apply P to three values */
+    REQUIRE(4, "app3");
+    JoyValue quot = POP();
+    JoyValue x3 = POP();
+    JoyValue x2 = POP();
+    JoyValue x1 = POP();
+
+    /* Save current stack */
+    JoyStack* saved = joy_stack_copy(ctx->stack);
+
+    /* Execute P on X1 */
+    joy_stack_clear(ctx->stack);
+    PUSH(x1);
+    execute_quot(ctx, &quot);
+    JoyValue r1 = POP();
+
+    /* Execute P on X2 */
+    joy_stack_clear(ctx->stack);
+    PUSH(x2);
+    execute_quot(ctx, &quot);
+    JoyValue r2 = POP();
+
+    /* Execute P on X3 */
+    joy_stack_clear(ctx->stack);
+    PUSH(x3);
+    execute_quot(ctx, &quot);
+    JoyValue r3 = POP();
+
+    /* Restore original stack and push results */
+    joy_stack_free(ctx->stack);
+    ctx->stack = saved;
+    PUSH(r1);
+    PUSH(r2);
+    PUSH(r3);
+
+    joy_value_free(&quot);
+}
+
+static void prim_app4(JoyContext* ctx) {
+    /* X1 X2 X3 X4 [P] -> R1 R2 R3 R4 : apply P to four values */
+    REQUIRE(5, "app4");
+    JoyValue quot = POP();
+    JoyValue x4 = POP();
+    JoyValue x3 = POP();
+    JoyValue x2 = POP();
+    JoyValue x1 = POP();
+
+    /* Save current stack */
+    JoyStack* saved = joy_stack_copy(ctx->stack);
+
+    /* Execute P on X1 */
+    joy_stack_clear(ctx->stack);
+    PUSH(x1);
+    execute_quot(ctx, &quot);
+    JoyValue r1 = POP();
+
+    /* Execute P on X2 */
+    joy_stack_clear(ctx->stack);
+    PUSH(x2);
+    execute_quot(ctx, &quot);
+    JoyValue r2 = POP();
+
+    /* Execute P on X3 */
+    joy_stack_clear(ctx->stack);
+    PUSH(x3);
+    execute_quot(ctx, &quot);
+    JoyValue r3 = POP();
+
+    /* Execute P on X4 */
+    joy_stack_clear(ctx->stack);
+    PUSH(x4);
+    execute_quot(ctx, &quot);
+    JoyValue r4 = POP();
+
+    /* Restore original stack and push results */
+    joy_stack_free(ctx->stack);
+    ctx->stack = saved;
+    PUSH(r1);
+    PUSH(r2);
+    PUSH(r3);
+    PUSH(r4);
+
+    joy_value_free(&quot);
+}
+
 /* ---------- Type Conditionals ---------- */
 
 static void prim_ifinteger(JoyContext* ctx) {
@@ -2464,6 +2668,276 @@ static void prim_stdout(JoyContext* ctx) {
 static void prim_stderr(JoyContext* ctx) {
     /* -> S : push standard error stream */
     PUSH(joy_file(stderr));
+}
+
+/* ---------- File I/O Operations ---------- */
+
+static void prim_fopen(JoyContext* ctx) {
+    /* P M -> S : open file with path P and mode M */
+    REQUIRE(2, "fopen");
+    JoyValue mode = POP();
+    JoyValue path = POP();
+    EXPECT_TYPE(path, JOY_STRING, "fopen");
+    EXPECT_TYPE(mode, JOY_STRING, "fopen");
+    FILE* f = fopen(path.data.string, mode.data.string);
+    joy_value_free(&path);
+    joy_value_free(&mode);
+    if (f) {
+        PUSH(joy_file(f));
+    } else {
+        /* Push false on failure */
+        PUSH(joy_boolean(false));
+    }
+}
+
+static void prim_fclose(JoyContext* ctx) {
+    /* S -> : close file stream */
+    REQUIRE(1, "fclose");
+    JoyValue v = POP();
+    EXPECT_TYPE(v, JOY_FILE, "fclose");
+    if (v.data.file && v.data.file != stdin &&
+        v.data.file != stdout && v.data.file != stderr) {
+        fclose(v.data.file);
+    }
+    /* Note: joy_value_free doesn't close files, so we handle it here */
+}
+
+static void prim_fflush(JoyContext* ctx) {
+    /* S -> S : flush file stream */
+    REQUIRE(1, "fflush");
+    JoyValue v = PEEK();
+    EXPECT_TYPE(v, JOY_FILE, "fflush");
+    if (v.data.file) {
+        fflush(v.data.file);
+    }
+}
+
+static void prim_feof(JoyContext* ctx) {
+    /* S -> S B : test end-of-file */
+    REQUIRE(1, "feof");
+    JoyValue v = PEEK();
+    EXPECT_TYPE(v, JOY_FILE, "feof");
+    bool is_eof = v.data.file ? feof(v.data.file) != 0 : true;
+    PUSH(joy_boolean(is_eof));
+}
+
+static void prim_ferror(JoyContext* ctx) {
+    /* S -> S B : test file error */
+    REQUIRE(1, "ferror");
+    JoyValue v = PEEK();
+    EXPECT_TYPE(v, JOY_FILE, "ferror");
+    bool has_error = v.data.file ? ferror(v.data.file) != 0 : true;
+    PUSH(joy_boolean(has_error));
+}
+
+static void prim_fgetch(JoyContext* ctx) {
+    /* S -> S C : read character from file */
+    REQUIRE(1, "fgetch");
+    JoyValue v = PEEK();
+    EXPECT_TYPE(v, JOY_FILE, "fgetch");
+    int c = v.data.file ? fgetc(v.data.file) : EOF;
+    if (c == EOF) {
+        PUSH(joy_integer(-1));
+    } else {
+        PUSH(joy_char((char)c));
+    }
+}
+
+static void prim_fgets(JoyContext* ctx) {
+    /* S -> S L : read line from file as list of chars */
+    REQUIRE(1, "fgets");
+    JoyValue v = PEEK();
+    EXPECT_TYPE(v, JOY_FILE, "fgets");
+
+    JoyList* chars = joy_list_new(80);
+    if (v.data.file) {
+        int c;
+        while ((c = fgetc(v.data.file)) != EOF && c != '\n') {
+            joy_list_push(chars, joy_char((char)c));
+        }
+        if (c == '\n') {
+            joy_list_push(chars, joy_char('\n'));
+        }
+    }
+    JoyValue result = {.type = JOY_LIST, .data.list = chars};
+    PUSH(result);
+}
+
+static void prim_fread(JoyContext* ctx) {
+    /* S I -> S L : read I bytes from file as list of chars */
+    REQUIRE(2, "fread");
+    JoyValue count = POP();
+    JoyValue v = PEEK();
+    EXPECT_TYPE(v, JOY_FILE, "fread");
+    EXPECT_TYPE(count, JOY_INTEGER, "fread");
+
+    size_t n = count.data.integer > 0 ? (size_t)count.data.integer : 0;
+    JoyList* chars = joy_list_new(n);
+    joy_value_free(&count);
+
+    if (v.data.file && n > 0) {
+        for (size_t i = 0; i < n; i++) {
+            int c = fgetc(v.data.file);
+            if (c == EOF) break;
+            joy_list_push(chars, joy_char((char)c));
+        }
+    }
+    JoyValue result = {.type = JOY_LIST, .data.list = chars};
+    PUSH(result);
+}
+
+static void prim_fput(JoyContext* ctx) {
+    /* S X -> S : write X to file */
+    REQUIRE(2, "fput");
+    JoyValue x = POP();
+    JoyValue v = PEEK();
+    EXPECT_TYPE(v, JOY_FILE, "fput");
+
+    if (v.data.file) {
+        /* Use joy_value_print logic but to file */
+        switch (x.type) {
+            case JOY_INTEGER:
+                fprintf(v.data.file, "%lld", (long long)x.data.integer);
+                break;
+            case JOY_FLOAT:
+                fprintf(v.data.file, "%g", x.data.floating);
+                break;
+            case JOY_BOOLEAN:
+                fprintf(v.data.file, "%s", x.data.boolean ? "true" : "false");
+                break;
+            case JOY_CHAR:
+                fputc(x.data.character, v.data.file);
+                break;
+            case JOY_STRING:
+                fprintf(v.data.file, "%s", x.data.string);
+                break;
+            default:
+                /* For complex types, just indicate type */
+                fprintf(v.data.file, "<%s>",
+                    x.type == JOY_LIST ? "list" :
+                    x.type == JOY_QUOTATION ? "quotation" :
+                    x.type == JOY_SET ? "set" : "value");
+                break;
+        }
+    }
+    joy_value_free(&x);
+}
+
+static void prim_fputch(JoyContext* ctx) {
+    /* S C -> S : write character to file */
+    REQUIRE(2, "fputch");
+    JoyValue c = POP();
+    JoyValue v = PEEK();
+    EXPECT_TYPE(v, JOY_FILE, "fputch");
+    EXPECT_TYPE(c, JOY_CHAR, "fputch");
+
+    if (v.data.file) {
+        fputc(c.data.character, v.data.file);
+    }
+    joy_value_free(&c);
+}
+
+static void prim_fputchars(JoyContext* ctx) {
+    /* S "abc.." -> S : write characters to file */
+    REQUIRE(2, "fputchars");
+    JoyValue s = POP();
+    JoyValue v = PEEK();
+    EXPECT_TYPE(v, JOY_FILE, "fputchars");
+    EXPECT_TYPE(s, JOY_STRING, "fputchars");
+
+    if (v.data.file) {
+        fputs(s.data.string, v.data.file);
+    }
+    joy_value_free(&s);
+}
+
+static void prim_fputstring(JoyContext* ctx) {
+    /* S "abc.." -> S : write string to file (same as fputchars) */
+    REQUIRE(2, "fputstring");
+    JoyValue s = POP();
+    JoyValue v = PEEK();
+    EXPECT_TYPE(v, JOY_FILE, "fputstring");
+    EXPECT_TYPE(s, JOY_STRING, "fputstring");
+
+    if (v.data.file) {
+        fputs(s.data.string, v.data.file);
+    }
+    joy_value_free(&s);
+}
+
+static void prim_fwrite(JoyContext* ctx) {
+    /* S L -> S : write list L of chars to file */
+    REQUIRE(2, "fwrite");
+    JoyValue list = POP();
+    JoyValue v = PEEK();
+    EXPECT_TYPE(v, JOY_FILE, "fwrite");
+
+    if (list.type == JOY_LIST && v.data.file) {
+        for (size_t i = 0; i < list.data.list->length; i++) {
+            JoyValue item = list.data.list->items[i];
+            if (item.type == JOY_CHAR) {
+                fputc(item.data.character, v.data.file);
+            } else if (item.type == JOY_INTEGER) {
+                fputc((char)item.data.integer, v.data.file);
+            }
+        }
+    }
+    joy_value_free(&list);
+}
+
+static void prim_fseek(JoyContext* ctx) {
+    /* S P W -> S : seek in file (P=position, W=whence: 0=SET, 1=CUR, 2=END) */
+    REQUIRE(3, "fseek");
+    JoyValue whence = POP();
+    JoyValue pos = POP();
+    JoyValue v = PEEK();
+    EXPECT_TYPE(v, JOY_FILE, "fseek");
+    EXPECT_TYPE(pos, JOY_INTEGER, "fseek");
+    EXPECT_TYPE(whence, JOY_INTEGER, "fseek");
+
+    if (v.data.file) {
+        int w = SEEK_SET;
+        if (whence.data.integer == 1) w = SEEK_CUR;
+        else if (whence.data.integer == 2) w = SEEK_END;
+        fseek(v.data.file, (long)pos.data.integer, w);
+    }
+    joy_value_free(&pos);
+    joy_value_free(&whence);
+}
+
+static void prim_ftell(JoyContext* ctx) {
+    /* S -> S I : get file position */
+    REQUIRE(1, "ftell");
+    JoyValue v = PEEK();
+    EXPECT_TYPE(v, JOY_FILE, "ftell");
+
+    long pos = v.data.file ? ftell(v.data.file) : -1;
+    PUSH(joy_integer(pos));
+}
+
+static void prim_fremove(JoyContext* ctx) {
+    /* P -> B : remove file at path P */
+    REQUIRE(1, "fremove");
+    JoyValue path = POP();
+    EXPECT_TYPE(path, JOY_STRING, "fremove");
+
+    int result = remove(path.data.string);
+    joy_value_free(&path);
+    PUSH(joy_boolean(result == 0));
+}
+
+static void prim_frename(JoyContext* ctx) {
+    /* P1 P2 -> B : rename file from P1 to P2 */
+    REQUIRE(2, "frename");
+    JoyValue newpath = POP();
+    JoyValue oldpath = POP();
+    EXPECT_TYPE(oldpath, JOY_STRING, "frename");
+    EXPECT_TYPE(newpath, JOY_STRING, "frename");
+
+    int result = rename(oldpath.data.string, newpath.data.string);
+    joy_value_free(&oldpath);
+    joy_value_free(&newpath);
+    PUSH(joy_boolean(result == 0));
 }
 
 /* ---------- Additional Math Functions ---------- */
@@ -3019,6 +3493,47 @@ static void prim_body(JoyContext* ctx) {
     }
 }
 
+/* ---------- System Interaction ---------- */
+
+static void prim_system(JoyContext* ctx) {
+    /* "command" -> : execute shell command */
+    REQUIRE(1, "system");
+    JoyValue v = POP();
+    EXPECT_TYPE(v, JOY_STRING, "system");
+    int result = system(v.data.string);
+    joy_value_free(&v);
+    PUSH(joy_integer(result));
+}
+
+static void prim_getenv(JoyContext* ctx) {
+    /* "variable" -> "value" : get environment variable */
+    REQUIRE(1, "getenv");
+    JoyValue v = POP();
+    EXPECT_TYPE(v, JOY_STRING, "getenv");
+    char* value = getenv(v.data.string);
+    joy_value_free(&v);
+    if (value) {
+        PUSH(joy_string(value));
+    } else {
+        PUSH(joy_string(""));
+    }
+}
+
+static void prim_argc(JoyContext* ctx) {
+    /* -> I : push argument count */
+    PUSH(joy_integer(joy_argc));
+}
+
+static void prim_argv(JoyContext* ctx) {
+    /* -> A : push command line arguments as list */
+    JoyList* list = joy_list_new(joy_argc > 0 ? (size_t)joy_argc : 1);
+    for (int i = 0; i < joy_argc; i++) {
+        joy_list_push(list, joy_string(joy_argv[i]));
+    }
+    JoyValue v = {.type = JOY_LIST, .data.list = list};
+    PUSH(v);
+}
+
 /* ---------- Registration ---------- */
 
 void joy_register_primitives(JoyContext* ctx) {
@@ -3216,6 +3731,14 @@ void joy_register_primitives(JoyContext* ctx) {
     joy_dict_define_primitive(d, "ternary", prim_ternary);
     joy_dict_define_primitive(d, "cleave", prim_cleave);
 
+    /* Application combinators */
+    joy_dict_define_primitive(d, "app1", prim_app1);
+    joy_dict_define_primitive(d, "app11", prim_app11);
+    joy_dict_define_primitive(d, "app12", prim_app12);
+    joy_dict_define_primitive(d, "app2", prim_app2);
+    joy_dict_define_primitive(d, "app3", prim_app3);
+    joy_dict_define_primitive(d, "app4", prim_app4);
+
     /* Type conditionals */
     joy_dict_define_primitive(d, "ifinteger", prim_ifinteger);
     joy_dict_define_primitive(d, "ifchar", prim_ifchar);
@@ -3225,4 +3748,29 @@ void joy_register_primitives(JoyContext* ctx) {
     joy_dict_define_primitive(d, "iflist", prim_iflist);
     joy_dict_define_primitive(d, "iffloat", prim_iffloat);
     joy_dict_define_primitive(d, "iffile", prim_iffile);
+
+    /* System interaction */
+    joy_dict_define_primitive(d, "system", prim_system);
+    joy_dict_define_primitive(d, "getenv", prim_getenv);
+    joy_dict_define_primitive(d, "argc", prim_argc);
+    joy_dict_define_primitive(d, "argv", prim_argv);
+
+    /* File I/O */
+    joy_dict_define_primitive(d, "fopen", prim_fopen);
+    joy_dict_define_primitive(d, "fclose", prim_fclose);
+    joy_dict_define_primitive(d, "fflush", prim_fflush);
+    joy_dict_define_primitive(d, "feof", prim_feof);
+    joy_dict_define_primitive(d, "ferror", prim_ferror);
+    joy_dict_define_primitive(d, "fgetch", prim_fgetch);
+    joy_dict_define_primitive(d, "fgets", prim_fgets);
+    joy_dict_define_primitive(d, "fread", prim_fread);
+    joy_dict_define_primitive(d, "fput", prim_fput);
+    joy_dict_define_primitive(d, "fputch", prim_fputch);
+    joy_dict_define_primitive(d, "fputchars", prim_fputchars);
+    joy_dict_define_primitive(d, "fputstring", prim_fputstring);
+    joy_dict_define_primitive(d, "fwrite", prim_fwrite);
+    joy_dict_define_primitive(d, "fseek", prim_fseek);
+    joy_dict_define_primitive(d, "ftell", prim_ftell);
+    joy_dict_define_primitive(d, "fremove", prim_fremove);
+    joy_dict_define_primitive(d, "frename", prim_frename);
 }

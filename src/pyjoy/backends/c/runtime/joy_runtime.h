@@ -208,4 +208,7 @@ void joy_error_underflow(const char* op, size_t required, size_t actual);
 void joy_runtime_init(JoyContext* ctx);
 void joy_register_primitives(JoyContext* ctx);
 
+/* Command line argument support */
+void joy_set_argv(int argc, char** argv);
+
 #endif /* JOY_RUNTIME_H */

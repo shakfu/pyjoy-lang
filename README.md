@@ -80,13 +80,16 @@ uv run python -m pyjoy compile program.joy -o build -n myprogram --run
 
 ## Status
 
-- **C Backend Coverage:** 145/203 primitives (71%) + 8 extensions
+- **C Backend Coverage:** 172/203 primitives (84%) + 8 extensions
 - **Python Interpreter:** Full Joy language support
 - **Compilation:** Joy source to C executable via `pyjoy compile`
 - **Tests:** 411 pytest tests passing
 
 ### Recent Additions
 
+- Application combinators: `app1`, `app11`, `app12`, `app2`, `app3`, `app4`
+- File I/O: `fopen`, `fclose`, `fflush`, `feof`, `ferror`, `fgetch`, `fgets`, `fread`, `fput`, `fputch`, `fputchars`, `fputstring`, `fwrite`, `fseek`, `ftell`, `fremove`, `frename`
+- System interaction: `system`, `getenv`, `argc`, `argv`
 - Arity combinators: `nullary`, `unary`, `binary`, `ternary`, `cleave`
 - Type conditionals: `ifinteger`, `ifchar`, `iflogical`, `ifset`, `ifstring`, `iflist`, `iffloat`, `iffile`
 - Type predicates: `leaf`, `file`

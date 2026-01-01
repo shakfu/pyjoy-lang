@@ -222,11 +222,10 @@ class CEmitter:
 
         lines = []
         lines.append("int main(int argc, char* argv[]) {")
-        lines.append("    (void)argc; (void)argv;")
-        lines.append("")
         lines.append("    /* Initialize context */")
         lines.append("    JoyContext* ctx = joy_context_new();")
         lines.append("    joy_runtime_init(ctx);")
+        lines.append("    joy_set_argv(argc, argv);")
         lines.append("")
 
         if has_quotations:

@@ -2,17 +2,16 @@
 Tests for the C code generation backend.
 """
 
-import pytest
-import subprocess
 import shutil
+import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from pyjoy.parser import Parser
-from pyjoy.backends.c.converter import JoyToCConverter, CProgram, CValue, CQuotation
-from pyjoy.backends.c.emitter import CEmitter
-from pyjoy.backends.c.builder import CBuilder, compile_joy_to_c
+import pytest
 
+from pyjoy.backends.c.builder import CBuilder, compile_joy_to_c
+from pyjoy.backends.c.converter import CValue, JoyToCConverter
+from pyjoy.backends.c.emitter import CEmitter
 
 # Skip all tests if no C compiler is available
 pytestmark = pytest.mark.skipif(

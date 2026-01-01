@@ -1,0 +1,11 @@
+(* Test y combinator *)
+DEFINE
+    y ==
+        [dup cons] swoncat dup cons i.
+
+DEFINE
+    y-fact ==
+        [ [null] [pop 1] [[dup pred] dip i *] ifte ]
+        y.
+
+5 y-fact.

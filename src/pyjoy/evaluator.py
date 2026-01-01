@@ -2286,7 +2286,11 @@ def drop_(ctx: ExecutionContext) -> None:
         # Sets don't have order, so drop doesn't really make sense
         # But for compatibility, treat as sorted list
         sorted_items = sorted(a.value)
-        result = frozenset(sorted_items[count:]) if count < len(sorted_items) else frozenset()
+        result = (
+            frozenset(sorted_items[count:])
+            if count < len(sorted_items)
+            else frozenset()
+        )
         ctx.stack.push_value(JoyValue.joy_set(result))
     else:
         raise JoyTypeError("drop", "aggregate", a.type.name)

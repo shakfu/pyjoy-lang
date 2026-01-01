@@ -1,0 +1,19 @@
+2 setecho.
+0 __settracegc.
+
+(* y combinator and y-ack *)
+DEFINE
+    y ==
+        [dup cons] swoncat dup cons i.
+DEFINE
+    twice-i ==
+        dup [i] dip i.
+DEFINE
+    y-ack ==
+        [ [ [ [pop pop null]  pop popd succ ]
+            [ [pop null]  [pop pred 1] dip i ]
+            [ [[dup pred swap] dip pred] dip twice-i ] ]
+        cond ]
+        y.
+
+[ [3 0] [3 1] [3 2] [3 3] [3 4] [3 5] ]   [i y-ack]  map.

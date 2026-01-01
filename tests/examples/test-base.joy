@@ -1,0 +1,2 @@
+(* Test base case of ack *)
+2 0 pop 1 +.

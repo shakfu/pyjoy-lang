@@ -1,0 +1,9 @@
+DEFINE
+    r-hamilhyp ==
+        [ null ]
+        [ pop ]
+        [ dup rollup pred       r-hamilhyp
+          dupd cons swap pred   r-hamilhyp ]
+        ifte.
+
+[]  3  r-hamilhyp putln.

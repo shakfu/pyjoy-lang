@@ -1,0 +1,13 @@
+DEFINE
+    r-hamilhyp ==
+        [ null ]
+        [ pop ]
+        [ dup rollup pred       r-hamilhyp
+          dupd cons swap pred   r-hamilhyp ]
+        ifte.
+
+(* Test with n=1, should be base case since 1 is not null *)
+[]  1  r-hamilhyp putln.
+
+(* Test with n=0, should be base case since 0 is null *)
+[]  0  r-hamilhyp putln.

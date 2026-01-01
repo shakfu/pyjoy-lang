@@ -1,0 +1,9 @@
+DEFINE
+    r-fact ==
+        [ null ]
+        [ pop 1]
+        [ dup pred r-fact *]
+        ifte.
+
+0 r-fact put.
+5 r-fact put.

@@ -1,0 +1,2 @@
+(* Test swoncat primitive *)
+[1 2] [3 4] swoncat.

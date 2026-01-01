@@ -1,0 +1,27 @@
+2 setecho.
+0 __settracegc.
+
+(* x-fact: self-application factorial *)
+DEFINE
+    x-fact ==
+        [ [ pop null ]
+          [ pop pop 1]
+          [ [dup pred] dip x *]
+          ifte ]
+        x.
+
+[ 0 1 2 3 4 5 6 ]  [x-fact]  map.
+
+(* twice-x and x-mcc91 *)
+DEFINE
+    twice-x ==
+        dup [x] dip x.
+DEFINE
+    x-mcc91 ==
+        [ [ pop 100 > ]
+          [ pop 10 - ]
+          [ [11 +] dip twice-x ]
+          ifte ]
+        x.
+
+[ -7 42 99 100 101 102 345 ]  [x-mcc91]  map.

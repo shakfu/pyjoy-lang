@@ -118,7 +118,9 @@ def compile_to_c(args: argparse.Namespace) -> int:
 
     # Check for C compiler
     if not shutil.which("gcc") and not shutil.which("clang"):
-        print("Error: No C compiler found. Please install gcc or clang.", file=sys.stderr)
+        print(
+            "Error: No C compiler found. Please install gcc or clang.", file=sys.stderr
+        )
         return 1
 
     source_path = Path(args.source)

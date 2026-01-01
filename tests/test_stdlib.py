@@ -4,7 +4,6 @@ Tests for Phase 7 standard library.
 
 import pytest
 
-from pyjoy.evaluator import Evaluator
 from pyjoy.types import JoyType
 
 

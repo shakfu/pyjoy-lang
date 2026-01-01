@@ -1,0 +1,8 @@
+(* Test condlinrec with R1/R2 recursion - countdown *)
+(* Note: [B T] is base case, [B R1 R2] is recursive case *)
+DEFINE countdown ==
+    [ [ [null] [pop] ]
+      [ [true] [dup put pred] [] ] ]
+    condlinrec .
+
+5 countdown.

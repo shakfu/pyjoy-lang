@@ -1,0 +1,3 @@
+(* Test y combinator step by step *)
+[a b c] [dup cons] swoncat.
+(* Should give: [dup cons a b c] *)

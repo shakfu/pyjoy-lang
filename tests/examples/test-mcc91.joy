@@ -1,0 +1,10 @@
+DEFINE
+    r-mcc91 ==
+        [ 100 > ]
+        [ 10 - ]
+        [ 11 + r-mcc91 r-mcc91 ]
+        ifte.
+
+100 r-mcc91 put.
+101 r-mcc91 put.
+50 r-mcc91 put.

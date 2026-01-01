@@ -1,0 +1,12 @@
+(* Test clr-ack progressively *)
+DEFINE
+    clr-ack ==
+        [ [ [pop null]  [popd succ] ]
+          [ [null]  [pop pred 1]  [] ]
+          [ [[dup pred swap] dip pred]  [clr-ack] ] ]
+        condlinrec.
+
+0 1 clr-ack put.
+0 2 clr-ack put.
+1 0 clr-ack put.
+1 1 clr-ack.

@@ -7,9 +7,9 @@ This module generates compilable C source code from CProgram representations.
 from __future__ import annotations
 
 from pathlib import Path
-from textwrap import dedent, indent
+from textwrap import dedent
 
-from .converter import CProgram, CQuotation, CDefinition, CValue
+from .converter import CDefinition, CProgram, CQuotation, CValue
 
 
 class CEmitter:
@@ -67,7 +67,9 @@ class CEmitter:
         if program.definitions:
             lines.append("static void register_definitions(JoyContext* ctx) {")
             for defn in program.definitions:
-                lines.append(f'    joy_dict_define_primitive(ctx->dictionary, "{defn.name}", {defn.c_name});')
+                lines.append(
+                    f'    joy_dict_define_primitive(ctx->dictionary, "{defn.name}", {defn.c_name});'
+                )
             lines.append("}")
             lines.append("")
 
@@ -101,7 +103,9 @@ class CEmitter:
     def _emit_quotation_init(self, quotation: CQuotation) -> str:
         """Emit code to initialize a quotation variable."""
         lines = []
-        lines.append(f"    {quotation.name} = joy_quotation_new({len(quotation.terms)});")
+        lines.append(
+            f"    {quotation.name} = joy_quotation_new({len(quotation.terms)});"
+        )
 
         for term in quotation.terms:
             init = self._emit_value_init(term)
@@ -122,21 +126,26 @@ class CEmitter:
 
         elif value.type == "char":
             c = value.value
-            if c == '\n':
+            if c == "\n":
                 return "joy_char('\\n')"
-            elif c == '\t':
+            elif c == "\t":
                 return "joy_char('\\t')"
-            elif c == '\r':
+            elif c == "\r":
                 return "joy_char('\\r')"
-            elif c == '\\':
+            elif c == "\\":
                 return "joy_char('\\\\')"
-            elif c == '\'':
+            elif c == "'":
                 return "joy_char('\\'')"
             else:
                 return f"joy_char('{c}')"
 
         elif value.type == "string":
-            escaped = value.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\t', '\\t')
+            escaped = (
+                value.value.replace("\\", "\\\\")
+                .replace('"', '\\"')
+                .replace("\n", "\\n")
+                .replace("\t", "\\t")
+            )
             return f'joy_string("{escaped}")'
 
         elif value.type == "symbol":
@@ -173,7 +182,9 @@ class CEmitter:
         lines.append("}")
         return "\n".join(lines)
 
-    def _emit_quotation_execution(self, quotation: CQuotation, indent_str: str = "") -> str:
+    def _emit_quotation_execution(
+        self, quotation: CQuotation, indent_str: str = ""
+    ) -> str:
         """Emit code to execute a quotation inline."""
         lines = []
 
@@ -185,7 +196,9 @@ class CEmitter:
             elif term.type == "quotation":
                 # Push the quotation onto the stack
                 if isinstance(term.value, CQuotation):
-                    lines.append(f"{indent_str}joy_stack_push(ctx->stack, (JoyValue){{.type = JOY_QUOTATION, .data.quotation = joy_quotation_copy({term.value.name})}});")
+                    lines.append(
+                        f"{indent_str}joy_stack_push(ctx->stack, (JoyValue){{.type = JOY_QUOTATION, .data.quotation = joy_quotation_copy({term.value.name})}});"
+                    )
                 else:
                     lines.append(f"{indent_str}/* push quotation */")
 

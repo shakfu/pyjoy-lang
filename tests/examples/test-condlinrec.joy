@@ -1,0 +1,10 @@
+(* Simple condlinrec test *)
+DEFINE
+    l-mcc91 ==
+        [ 100 > ]
+        [ 10 - ]
+        [ 11 + ]
+        [ l-mcc91 ]
+        linrec.
+
+101 l-mcc91.

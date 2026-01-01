@@ -1,0 +1,11 @@
+(* Test simpler y usage - count down without multiply *)
+DEFINE
+    y ==
+        [dup cons] swoncat dup cons i.
+
+DEFINE
+    y-countdown ==
+        [ [null] [pop] [pred dup put i] ifte ]
+        y.
+
+3 y-countdown.

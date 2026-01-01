@@ -1,0 +1,2 @@
+(* Test ifte else branch with multi-term body *)
+5 [null] [pop 0] [dup pred] ifte put.

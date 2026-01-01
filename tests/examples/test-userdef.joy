@@ -1,0 +1,8 @@
+(* Test user-defined recursive function *)
+DEFINE fact ==
+    [ null ]
+    [ pop 1 ]
+    [ dup pred fact * ]
+    ifte.
+
+5 fact.

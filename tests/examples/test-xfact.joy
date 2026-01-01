@@ -1,0 +1,9 @@
+DEFINE
+    x-fact ==
+        [ [ pop null ]
+          [ pop pop 1]
+          [ [dup pred] dip x *]
+          ifte ]
+        x.
+
+5 x-fact put.

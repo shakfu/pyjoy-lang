@@ -1,0 +1,2 @@
+(* Test x combinator: x == dup i *)
+[1 +] x put.

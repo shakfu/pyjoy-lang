@@ -1,0 +1,18 @@
+(* Test y-ack from jp-nestrec.joy *)
+DEFINE
+    y ==
+        [dup cons] swoncat dup cons i.
+DEFINE
+    twice-i ==
+        dup [i] dip i.
+DEFINE
+    y-ack ==
+        [ [ [ [pop pop null]  pop popd succ ]
+            [ [pop null]  [pop pred 1] dip i ]
+            [ [[dup pred swap] dip pred] dip twice-i ] ]
+        cond ]
+        y.
+
+3 0 y-ack put.
+3 1 y-ack put.
+3 2 y-ack put.

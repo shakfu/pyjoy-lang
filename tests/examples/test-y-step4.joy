@@ -1,0 +1,7 @@
+(* Test y combinator: the issue is executing i on the constructed quotation *)
+(* [[dup cons a b c] dup cons a b c] i should execute the body, which pushes
+   [dup cons a b c], then executes dup cons a b c.
+   But a, b, c are undefined. So this would fail. *)
+(* Let me test with actual things that work *)
+
+[1 2 +] [dup cons] swoncat dup cons i.

@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ...types import JoyValue, JoyQuotation, JoyType
+from ...types import JoyQuotation, JoyType, JoyValue
 
 
 @dataclass
@@ -30,20 +30,25 @@ class CValue:
             return f"joy_boolean({'true' if self.value else 'false'})"
         elif self.type == "char":
             c = self.value
-            if c == '\n':
+            if c == "\n":
                 return "joy_char('\\n')"
-            elif c == '\t':
+            elif c == "\t":
                 return "joy_char('\\t')"
-            elif c == '\r':
+            elif c == "\r":
                 return "joy_char('\\r')"
-            elif c == '\\':
+            elif c == "\\":
                 return "joy_char('\\\\')"
-            elif c == '\'':
+            elif c == "'":
                 return "joy_char('\\'')"
             else:
                 return f"joy_char('{c}')"
         elif self.type == "string":
-            escaped = self.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\t', '\\t')
+            escaped = (
+                self.value.replace("\\", "\\\\")
+                .replace('"', '\\"')
+                .replace("\n", "\\n")
+                .replace("\t", "\\t")
+            )
             return f'joy_string("{escaped}")'
         elif self.type == "set":
             return f"joy_set_from((int[]){{{', '.join(str(m) for m in sorted(self.value))}}}, {len(self.value)})"
@@ -121,54 +126,56 @@ class JoyToCConverter:
         for c in name:
             if c.isalnum():
                 result.append(c)
-            elif c == '-':
-                result.append('_')
-            elif c == '+':
-                result.append('_plus')
-            elif c == '*':
-                result.append('_star')
-            elif c == '/':
-                result.append('_slash')
-            elif c == '=':
-                result.append('_eq')
-            elif c == '<':
-                result.append('_lt')
-            elif c == '>':
-                result.append('_gt')
-            elif c == '!':
-                result.append('_bang')
-            elif c == '?':
-                result.append('_quest')
-            elif c == '@':
-                result.append('_at')
-            elif c == '#':
-                result.append('_hash')
-            elif c == '$':
-                result.append('_dollar')
-            elif c == '%':
-                result.append('_percent')
-            elif c == '^':
-                result.append('_caret')
-            elif c == '&':
-                result.append('_amp')
-            elif c == '|':
-                result.append('_pipe')
-            elif c == '~':
-                result.append('_tilde')
-            elif c == ':':
-                result.append('_colon')
+            elif c == "-":
+                result.append("_")
+            elif c == "+":
+                result.append("_plus")
+            elif c == "*":
+                result.append("_star")
+            elif c == "/":
+                result.append("_slash")
+            elif c == "=":
+                result.append("_eq")
+            elif c == "<":
+                result.append("_lt")
+            elif c == ">":
+                result.append("_gt")
+            elif c == "!":
+                result.append("_bang")
+            elif c == "?":
+                result.append("_quest")
+            elif c == "@":
+                result.append("_at")
+            elif c == "#":
+                result.append("_hash")
+            elif c == "$":
+                result.append("_dollar")
+            elif c == "%":
+                result.append("_percent")
+            elif c == "^":
+                result.append("_caret")
+            elif c == "&":
+                result.append("_amp")
+            elif c == "|":
+                result.append("_pipe")
+            elif c == "~":
+                result.append("_tilde")
+            elif c == ":":
+                result.append("_colon")
             else:
-                result.append('_')
+                result.append("_")
 
-        name = ''.join(result)
+        name = "".join(result)
 
         # Ensure it doesn't start with a digit
         if name and name[0].isdigit():
-            name = '_' + name
+            name = "_" + name
 
-        return name or '_unnamed'
+        return name or "_unnamed"
 
-    def convert(self, program: JoyQuotation, definitions: dict[str, JoyQuotation] | None = None) -> CProgram:
+    def convert(
+        self, program: JoyQuotation, definitions: dict[str, JoyQuotation] | None = None
+    ) -> CProgram:
         """
         Convert a Joy program to C representation.
 
@@ -199,7 +206,9 @@ class JoyToCConverter:
         c_body = self._convert_quotation(body, c_name + "_body")
         return CDefinition(name=name, c_name=c_name, body=c_body)
 
-    def _convert_quotation(self, quotation: JoyQuotation, name: str | None = None) -> CQuotation:
+    def _convert_quotation(
+        self, quotation: JoyQuotation, name: str | None = None
+    ) -> CQuotation:
         """Convert a Joy quotation to C."""
         if name is None:
             name = self._next_quotation_name()

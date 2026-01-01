@@ -1,0 +1,10 @@
+DEFINE
+    r-hamilhyp ==
+        [ null ]
+        [ pop ]
+        [ dup rollup pred       r-hamilhyp
+          dupd cons swap pred   r-hamilhyp ]
+        ifte.
+
+(* Test n=1 *)
+[]  1  r-hamilhyp.

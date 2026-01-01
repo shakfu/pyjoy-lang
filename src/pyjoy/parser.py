@@ -307,9 +307,7 @@ class Parser:
                     continue
                 self._advance()
 
-                body_terms = self._parse_terms(
-                    {"SEMICOLON", "END_KW", "PERIOD"}
-                )
+                body_terms = self._parse_terms({"SEMICOLON", "END_KW", "PERIOD"})
                 body = JoyQuotation(tuple(body_terms))
                 definitions.append(Definition(name, body))
 

@@ -1,0 +1,15 @@
+2 setecho.
+0 __settracegc.
+
+(* x-hamilhyp *)
+DEFINE
+    x-hamilhyp ==
+        [ [ pop null ]
+          [ pop pop ]
+          [ dup [ [dup rollup pred] dip  x ] dip
+            [dupd cons] dip
+            [swap pred] dip  x ]
+          ifte ]
+        x.
+
+[]  5  x-hamilhyp.

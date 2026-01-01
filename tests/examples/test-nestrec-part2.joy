@@ -1,0 +1,14 @@
+2 setecho.
+0 __settracegc.
+
+(* r-hamilhyp *)
+DEFINE
+    r-hamilhyp ==   #  [] n  =>  [...]
+        [ null ]
+        [ pop ]
+        [ dup rollup pred       r-hamilhyp
+          dupd cons swap pred   r-hamilhyp ]
+        ifte.
+
+[]  3  r-hamilhyp.
+[]  4  r-hamilhyp.

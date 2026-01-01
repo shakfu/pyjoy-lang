@@ -1,0 +1,10 @@
+DEFINE
+    r-ack ==
+        [ [ [pop null]  popd succ ]
+          [ [null]  pop pred 1 r-ack ]
+          [ [dup pred swap] dip pred r-ack r-ack ] ]
+        cond.
+
+0 0 r-ack put.
+1 2 r-ack put.
+2 2 r-ack put.

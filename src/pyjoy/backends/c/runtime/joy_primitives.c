@@ -39,23 +39,25 @@ static void prim_swap(JoyContext* ctx) {
 }
 
 static void prim_rollup(JoyContext* ctx) {
+    /* X Y Z -> Z X Y (Y ends on top) */
     REQUIRE(3, "rollup");
     JoyValue z = POP();
     JoyValue y = POP();
     JoyValue x = POP();
-    PUSH(y);
     PUSH(z);
     PUSH(x);
+    PUSH(y);
 }
 
 static void prim_rolldown(JoyContext* ctx) {
+    /* X Y Z -> Y Z X (X ends on top) */
     REQUIRE(3, "rolldown");
     JoyValue z = POP();
     JoyValue y = POP();
     JoyValue x = POP();
+    PUSH(y);
     PUSH(z);
     PUSH(x);
-    PUSH(y);
 }
 
 static void prim_rotate(JoyContext* ctx) {
@@ -66,6 +68,24 @@ static void prim_rotate(JoyContext* ctx) {
     PUSH(z);
     PUSH(y);
     PUSH(x);
+}
+
+static void prim_over(JoyContext* ctx) {
+    /* X Y -> X Y X (copy second to top) */
+    REQUIRE(2, "over");
+    JoyValue y = POP();
+    JoyValue x = PEEK();
+    PUSH(y);
+    PUSH(joy_value_copy(x));
+}
+
+static void prim_dup2(JoyContext* ctx) {
+    /* X Y -> X Y X Y (duplicate top two) */
+    REQUIRE(2, "dup2");
+    JoyValue y = PEEK();
+    JoyValue x = PEEK_N(1);
+    PUSH(joy_value_copy(x));
+    PUSH(joy_value_copy(y));
 }
 
 static void prim_dupd(JoyContext* ctx) {
@@ -445,7 +465,14 @@ static void prim_and(JoyContext* ctx) {
     REQUIRE(2, "and");
     JoyValue b = POP();
     JoyValue a = POP();
-    PUSH(joy_boolean(joy_value_truthy(a) && joy_value_truthy(b)));
+    if (a.type == JOY_SET && b.type == JOY_SET) {
+        /* Set intersection */
+        JoyValue result = {.type = JOY_SET, .data.set = a.data.set & b.data.set};
+        PUSH(result);
+    } else {
+        /* Logical conjunction */
+        PUSH(joy_boolean(joy_value_truthy(a) && joy_value_truthy(b)));
+    }
     joy_value_free(&a);
     joy_value_free(&b);
 }
@@ -454,7 +481,14 @@ static void prim_or(JoyContext* ctx) {
     REQUIRE(2, "or");
     JoyValue b = POP();
     JoyValue a = POP();
-    PUSH(joy_boolean(joy_value_truthy(a) || joy_value_truthy(b)));
+    if (a.type == JOY_SET && b.type == JOY_SET) {
+        /* Set union */
+        JoyValue result = {.type = JOY_SET, .data.set = a.data.set | b.data.set};
+        PUSH(result);
+    } else {
+        /* Logical disjunction */
+        PUSH(joy_boolean(joy_value_truthy(a) || joy_value_truthy(b)));
+    }
     joy_value_free(&a);
     joy_value_free(&b);
 }
@@ -462,7 +496,14 @@ static void prim_or(JoyContext* ctx) {
 static void prim_not(JoyContext* ctx) {
     REQUIRE(1, "not");
     JoyValue v = POP();
-    PUSH(joy_boolean(!joy_value_truthy(v)));
+    if (v.type == JOY_SET) {
+        /* Bitwise complement of set */
+        JoyValue result = {.type = JOY_SET, .data.set = ~v.data.set};
+        PUSH(result);
+    } else {
+        /* Logical negation */
+        PUSH(joy_boolean(!joy_value_truthy(v)));
+    }
     joy_value_free(&v);
 }
 
@@ -528,6 +569,24 @@ static void prim_cons(JoyContext* ctx) {
         joy_value_free(&agg);
         JoyValue v = {.type = JOY_QUOTATION, .data.quotation = result};
         PUSH(v);
+    } else if (agg.type == JOY_SET) {
+        /* cons on set: add element (must be integer 0-63) */
+        if (item.type != JOY_INTEGER) {
+            joy_value_free(&item);
+            joy_value_free(&agg);
+            joy_error_type("cons", "INTEGER for set element", item.type);
+        }
+        int64_t n = item.data.integer;
+        if (n < 0 || n > 63) {
+            joy_value_free(&item);
+            joy_value_free(&agg);
+            joy_error("cons: set element must be 0-63");
+        }
+        uint64_t new_set = agg.data.set | (1ULL << n);
+        joy_value_free(&item);
+        joy_value_free(&agg);
+        JoyValue v = {.type = JOY_SET, .data.set = new_set};
+        PUSH(v);
     } else {
         joy_error_type("cons", "aggregate", agg.type);
     }
@@ -564,6 +623,15 @@ static void prim_uncons(JoyContext* ctx) {
     } else {
         joy_error_type("uncons", "aggregate", v.type);
     }
+}
+
+static void prim_concat(JoyContext* ctx);
+
+static void prim_swoncat(JoyContext* ctx) {
+    /* swap concat */
+    REQUIRE(2, "swoncat");
+    joy_stack_swap(ctx->stack);
+    prim_concat(ctx);
 }
 
 static void prim_concat(JoyContext* ctx) {
@@ -663,17 +731,24 @@ static void prim_i(JoyContext* ctx) {
 }
 
 static void prim_x(JoyContext* ctx) {
+    /* x == dup i : duplicate quotation, then execute */
     REQUIRE(1, "x");
     JoyValue v = PEEK();
-    if (v.type == JOY_QUOTATION) {
-        joy_execute_quotation(ctx, v.data.quotation);
-    } else if (v.type == JOY_LIST) {
-        for (size_t i = 0; i < v.data.list->length; i++) {
-            joy_execute_value(ctx, v.data.list->items[i]);
-        }
-    } else {
+    if (v.type != JOY_QUOTATION && v.type != JOY_LIST) {
         joy_error_type("x", "QUOTATION", v.type);
     }
+    /* Push a copy (dup) */
+    PUSH(joy_value_copy(v));
+    /* Pop and execute (i) */
+    JoyValue q = POP();
+    if (q.type == JOY_QUOTATION) {
+        joy_execute_quotation(ctx, q.data.quotation);
+    } else if (q.type == JOY_LIST) {
+        for (size_t i = 0; i < q.data.list->length; i++) {
+            joy_execute_value(ctx, q.data.list->items[i]);
+        }
+    }
+    joy_value_free(&q);
 }
 
 static void prim_dip(JoyContext* ctx) {
@@ -956,6 +1031,231 @@ static void prim_filter(JoyContext* ctx) {
     PUSH(rv);
 }
 
+/* ---------- Recursion Combinators ---------- */
+
+static void binrec_aux(JoyContext* ctx, JoyValue* p, JoyValue* t, JoyValue* r1, JoyValue* r2);
+
+static void execute_quot(JoyContext* ctx, JoyValue* quot) {
+    if (quot->type == JOY_QUOTATION) {
+        joy_execute_quotation(ctx, quot->data.quotation);
+    } else if (quot->type == JOY_LIST) {
+        for (size_t i = 0; i < quot->data.list->length; i++) {
+            joy_execute_value(ctx, quot->data.list->items[i]);
+        }
+    }
+}
+
+static void binrec_aux(JoyContext* ctx, JoyValue* p, JoyValue* t, JoyValue* r1, JoyValue* r2) {
+    /* Save stack for predicate test */
+    JoyStack* saved = joy_stack_copy(ctx->stack);
+
+    /* Execute predicate */
+    execute_quot(ctx, p);
+    JoyValue test_result = POP();
+    bool is_base = joy_value_truthy(test_result);
+    joy_value_free(&test_result);
+
+    /* Restore stack */
+    joy_stack_free(ctx->stack);
+    ctx->stack = saved;
+
+    if (is_base) {
+        /* Base case: execute terminal */
+        execute_quot(ctx, t);
+    } else {
+        /* Split into two values */
+        execute_quot(ctx, r1);
+
+        /* Save first value */
+        JoyValue first_arg = POP();
+
+        /* Recurse on remaining */
+        binrec_aux(ctx, p, t, r1, r2);
+        JoyValue first_result = POP();
+
+        /* Push first arg and recurse */
+        PUSH(first_arg);
+        binrec_aux(ctx, p, t, r1, r2);
+
+        /* Push first result back */
+        PUSH(first_result);
+
+        /* Combine */
+        execute_quot(ctx, r2);
+    }
+}
+
+static void prim_binrec(JoyContext* ctx) {
+    REQUIRE(4, "binrec");
+    JoyValue r2 = POP();
+    JoyValue r1 = POP();
+    JoyValue t = POP();
+    JoyValue p = POP();
+
+    binrec_aux(ctx, &p, &t, &r1, &r2);
+
+    joy_value_free(&p);
+    joy_value_free(&t);
+    joy_value_free(&r1);
+    joy_value_free(&r2);
+}
+
+static void linrec_aux(JoyContext* ctx, JoyValue* p, JoyValue* t, JoyValue* r1, JoyValue* r2) {
+    /* Save stack for predicate test */
+    JoyStack* saved = joy_stack_copy(ctx->stack);
+
+    /* Execute predicate */
+    execute_quot(ctx, p);
+    JoyValue test_result = POP();
+    bool is_base = joy_value_truthy(test_result);
+    joy_value_free(&test_result);
+
+    /* Restore stack */
+    joy_stack_free(ctx->stack);
+    ctx->stack = saved;
+
+    if (is_base) {
+        /* Base case */
+        execute_quot(ctx, t);
+    } else {
+        /* Execute r1, recurse, execute r2 */
+        execute_quot(ctx, r1);
+        linrec_aux(ctx, p, t, r1, r2);
+        execute_quot(ctx, r2);
+    }
+}
+
+static void prim_linrec(JoyContext* ctx) {
+    REQUIRE(4, "linrec");
+    JoyValue r2 = POP();
+    JoyValue r1 = POP();
+    JoyValue t = POP();
+    JoyValue p = POP();
+
+    linrec_aux(ctx, &p, &t, &r1, &r2);
+
+    joy_value_free(&p);
+    joy_value_free(&t);
+    joy_value_free(&r1);
+    joy_value_free(&r2);
+}
+
+static void prim_tailrec(JoyContext* ctx) {
+    REQUIRE(3, "tailrec");
+    JoyValue r1 = POP();
+    JoyValue t = POP();
+    JoyValue p = POP();
+
+    while (1) {
+        /* Save stack for predicate test */
+        JoyStack* saved = joy_stack_copy(ctx->stack);
+
+        /* Execute predicate */
+        execute_quot(ctx, &p);
+        JoyValue test_result = POP();
+        bool is_base = joy_value_truthy(test_result);
+        joy_value_free(&test_result);
+
+        /* Restore stack */
+        joy_stack_free(ctx->stack);
+        ctx->stack = saved;
+
+        if (is_base) {
+            execute_quot(ctx, &t);
+            break;
+        } else {
+            execute_quot(ctx, &r1);
+        }
+    }
+
+    joy_value_free(&p);
+    joy_value_free(&t);
+    joy_value_free(&r1);
+}
+
+static void prim_primrec(JoyContext* ctx) {
+    /* X [I] [C] primrec -> execute I for initial value, combine with 1..X using C */
+    REQUIRE(3, "primrec");
+    JoyValue c = POP();
+    JoyValue i = POP();
+    JoyValue x = POP();
+
+    /* Execute I to get initial value */
+    execute_quot(ctx, &i);
+
+    if (x.type == JOY_INTEGER) {
+        /* For integer: combine with 1, 2, ..., X */
+        int64_t n = x.data.integer;
+        for (int64_t j = 1; j <= n; j++) {
+            PUSH(joy_integer(j));
+            execute_quot(ctx, &c);
+        }
+    } else if (x.type == JOY_LIST) {
+        /* For aggregate: combine with each member */
+        JoyList* lst = x.data.list;
+        for (size_t j = 0; j < lst->length; j++) {
+            PUSH(joy_value_copy(lst->items[j]));
+            execute_quot(ctx, &c);
+        }
+    } else if (x.type == JOY_STRING) {
+        /* For string: combine with each character */
+        const char* s = x.data.string;
+        while (*s) {
+            PUSH(joy_char(*s));
+            execute_quot(ctx, &c);
+            s++;
+        }
+    } else {
+        joy_error_type("primrec", "INTEGER, LIST, or STRING", x.type);
+    }
+
+    joy_value_free(&x);
+    joy_value_free(&i);
+    joy_value_free(&c);
+}
+
+static void prim_genrec(JoyContext* ctx) {
+    REQUIRE(4, "genrec");
+    JoyValue r2 = POP();
+    JoyValue r1 = POP();
+    JoyValue t = POP();
+    JoyValue p = POP();
+
+    /* Save stack for predicate test */
+    JoyStack* saved = joy_stack_copy(ctx->stack);
+
+    /* Execute predicate */
+    execute_quot(ctx, &p);
+    JoyValue test_result = POP();
+    bool is_base = joy_value_truthy(test_result);
+    joy_value_free(&test_result);
+
+    /* Restore stack */
+    joy_stack_free(ctx->stack);
+    ctx->stack = saved;
+
+    if (is_base) {
+        execute_quot(ctx, &t);
+    } else {
+        execute_quot(ctx, &r1);
+        /* Push the quotation [[P] [T] [R1] [R2] genrec] for recursion */
+        JoyQuotation* rec = joy_quotation_new(5);
+        joy_quotation_push(rec, joy_value_copy(p));
+        joy_quotation_push(rec, joy_value_copy(t));
+        joy_quotation_push(rec, joy_value_copy(r1));
+        joy_quotation_push(rec, joy_value_copy(r2));
+        joy_quotation_push(rec, joy_symbol("genrec"));
+        JoyValue rec_val = {.type = JOY_QUOTATION, .data.quotation = rec};
+        PUSH(rec_val);
+        execute_quot(ctx, &r2);
+    }
+
+    joy_value_free(&p);
+    joy_value_free(&t);
+    joy_value_free(&r1);
+    joy_value_free(&r2);
+}
+
 /* ---------- I/O Operations ---------- */
 
 static void prim_put(JoyContext* ctx) {
@@ -989,6 +1289,327 @@ static void prim_putchars(JoyContext* ctx) {
 static void prim_newline(JoyContext* ctx) {
     (void)ctx;
     printf("\n");
+}
+
+static void prim_putln(JoyContext* ctx) {
+    /* Print top of stack followed by newline */
+    REQUIRE(1, "putln");
+    JoyValue v = POP();
+    joy_value_print(v);
+    printf("\n");
+    joy_value_free(&v);
+}
+
+/* Debug commands - no-op in compiled code */
+static void prim_setecho(JoyContext* ctx) {
+    REQUIRE(1, "setecho");
+    JoyValue v = POP();
+    joy_value_free(&v);
+    /* No-op: echo mode not relevant for compiled code */
+}
+
+static void prim_settracegc(JoyContext* ctx) {
+    REQUIRE(1, "__settracegc");
+    JoyValue v = POP();
+    joy_value_free(&v);
+    /* No-op: GC tracing not relevant for compiled code */
+}
+
+/* ---------- Set Operations ---------- */
+
+static void prim_has(JoyContext* ctx) {
+    /* {..} X has -> B : test if X is in set */
+    REQUIRE(2, "has");
+    JoyValue x = POP();
+    JoyValue s = POP();
+    EXPECT_TYPE(s, JOY_SET, "has");
+
+    if (x.type != JOY_INTEGER) {
+        joy_error_type("has", "INTEGER", x.type);
+    }
+
+    int64_t elem = x.data.integer;
+    bool result = false;
+    if (elem >= 0 && elem < 64) {
+        result = (s.data.set & (1ULL << elem)) != 0;
+    }
+
+    PUSH(joy_boolean(result));
+    joy_value_free(&x);
+    joy_value_free(&s);
+}
+
+/* ---------- Advanced Combinators ---------- */
+
+static void prim_cond(JoyContext* ctx) {
+    /* [[B1 T1] [B2 T2] ... [D]] -> ... */
+    REQUIRE(1, "cond");
+    JoyValue clauses = POP();
+
+    JoyList* clause_list = NULL;
+    JoyQuotation* clause_quot = NULL;
+    size_t count = 0;
+
+    if (clauses.type == JOY_LIST) {
+        clause_list = clauses.data.list;
+        count = clause_list->length;
+    } else if (clauses.type == JOY_QUOTATION) {
+        clause_quot = clauses.data.quotation;
+        count = clause_quot->length;
+    } else {
+        joy_error_type("cond", "LIST or QUOTATION", clauses.type);
+    }
+
+    if (count == 0) {
+        joy_value_free(&clauses);
+        return;
+    }
+
+    /* Save stack for condition testing */
+    JoyStack* saved = joy_stack_copy(ctx->stack);
+
+    for (size_t i = 0; i < count; i++) {
+        JoyValue clause;
+        if (clause_list) {
+            clause = joy_value_copy(clause_list->items[i]);
+        } else {
+            clause = joy_value_copy(clause_quot->terms[i]);
+        }
+
+        if (clause.type != JOY_QUOTATION && clause.type != JOY_LIST) {
+            joy_value_free(&clause);
+            continue;
+        }
+
+        size_t clause_len = 0;
+        JoyValue* clause_items = NULL;
+        if (clause.type == JOY_QUOTATION) {
+            clause_len = clause.data.quotation->length;
+            clause_items = clause.data.quotation->terms;
+        } else {
+            clause_len = clause.data.list->length;
+            clause_items = clause.data.list->items;
+        }
+
+        if (clause_len == 0) {
+            joy_value_free(&clause);
+            continue;
+        }
+
+        /* Last clause is the default - execute all elements as body */
+        bool is_last = (i == count - 1);
+        if (is_last) {
+            joy_stack_free(ctx->stack);
+            ctx->stack = joy_stack_copy(saved);
+            for (size_t j = 0; j < clause_len; j++) {
+                joy_execute_value(ctx, clause_items[j]);
+            }
+            joy_value_free(&clause);
+            joy_stack_free(saved);
+            joy_value_free(&clauses);
+            return;
+        }
+
+        /* [[Bi] Ti...] - first element is condition quotation, rest is body */
+        JoyValue condition = clause_items[0];
+
+        /* Restore stack and test condition */
+        joy_stack_free(ctx->stack);
+        ctx->stack = joy_stack_copy(saved);
+        execute_quot(ctx, &condition);
+
+        JoyValue test_result = POP();
+        bool passed = joy_value_truthy(test_result);
+        joy_value_free(&test_result);
+
+        if (passed) {
+            /* Execute body on original stack (condition test is non-destructive) */
+            joy_stack_free(ctx->stack);
+            ctx->stack = joy_stack_copy(saved);
+            for (size_t j = 1; j < clause_len; j++) {
+                joy_execute_value(ctx, clause_items[j]);
+            }
+            joy_value_free(&clause);
+            joy_stack_free(saved);
+            joy_value_free(&clauses);
+            return;
+        }
+
+        joy_value_free(&clause);
+    }
+
+    /* No clause matched - restore stack */
+    joy_stack_free(ctx->stack);
+    ctx->stack = saved;
+    joy_value_free(&clauses);
+}
+
+static void prim_infra(JoyContext* ctx) {
+    /* L [P] -> L' : execute P with L as stack */
+    REQUIRE(2, "infra");
+    JoyValue quot = POP();
+    JoyValue lst = POP();
+
+    /* Save current stack */
+    JoyStack* saved = joy_stack_copy(ctx->stack);
+
+    /* Replace stack with list/quotation contents */
+    joy_stack_clear(ctx->stack);
+    if (lst.type == JOY_LIST) {
+        for (size_t i = 0; i < lst.data.list->length; i++) {
+            joy_stack_push(ctx->stack, joy_value_copy(lst.data.list->items[i]));
+        }
+    } else if (lst.type == JOY_QUOTATION) {
+        for (size_t i = 0; i < lst.data.quotation->length; i++) {
+            joy_stack_push(ctx->stack, joy_value_copy(lst.data.quotation->terms[i]));
+        }
+    } else {
+        joy_stack_free(saved);
+        joy_value_free(&quot);
+        joy_value_free(&lst);
+        joy_error_type("infra", "LIST or QUOTATION", lst.type);
+    }
+
+    /* Execute quotation */
+    execute_quot(ctx, &quot);
+
+    /* Collect result as list */
+    JoyList* result = joy_list_new(ctx->stack->depth);
+    for (size_t i = 0; i < ctx->stack->depth; i++) {
+        joy_list_push(result, joy_value_copy(ctx->stack->items[i]));
+    }
+
+    /* Restore original stack and push result */
+    joy_stack_free(ctx->stack);
+    ctx->stack = saved;
+
+    JoyValue result_val;
+    result_val.type = JOY_LIST;
+    result_val.data.list = result;
+    PUSH(result_val);
+
+    joy_value_free(&quot);
+    joy_value_free(&lst);
+}
+
+/* condnestrecaux - shared implementation for condlinrec and condnestrec
+
+   Format: [ [C1] [C2] .. [D] ] where:
+   - Each [Ci] is [[B] [T]] or [[B] [R1] [R2] ...]
+   - [D] is the default: [[T]] or [[R1] [R2] ...] (NO condition B)
+
+   Tests each B (except last clause which is default).
+   If B is true: skip B, use rest as [T] or [R1 R2 ...]
+   If no B matches: use last clause (default) as-is
+
+   Then executes: first part, then for each subsequent: recurse, execute
+*/
+static void condnestrecaux(JoyContext* ctx, JoyValue* clauses) {
+    size_t count = 0;
+    JoyValue* items = NULL;
+
+    if (clauses->type == JOY_LIST) {
+        count = clauses->data.list->length;
+        items = clauses->data.list->items;
+    } else if (clauses->type == JOY_QUOTATION) {
+        count = clauses->data.quotation->length;
+        items = clauses->data.quotation->terms;
+    } else {
+        return;
+    }
+
+    if (count == 0) return;
+
+    /* Save stack for condition testing */
+    JoyStack* saved = joy_stack_copy(ctx->stack);
+
+    /* Test B for all clauses EXCEPT the last (which is default) */
+    bool matched = false;
+    size_t matched_idx = count - 1;  /* Default to last clause */
+
+    for (size_t i = 0; i < count - 1; i++) {
+        JoyValue clause = items[i];
+
+        size_t clause_len = 0;
+        JoyValue* clause_items = NULL;
+        if (clause.type == JOY_QUOTATION) {
+            clause_len = clause.data.quotation->length;
+            clause_items = clause.data.quotation->terms;
+        } else if (clause.type == JOY_LIST) {
+            clause_len = clause.data.list->length;
+            clause_items = clause.data.list->items;
+        } else {
+            continue;
+        }
+
+        if (clause_len < 2) continue;
+
+        /* Test condition B (first element) */
+        joy_stack_free(ctx->stack);
+        ctx->stack = joy_stack_copy(saved);
+        execute_quot(ctx, &clause_items[0]);
+
+        JoyValue test_result = POP();
+        bool passed = joy_value_truthy(test_result);
+        joy_value_free(&test_result);
+
+        if (passed) {
+            matched = true;
+            matched_idx = i;
+            break;
+        }
+    }
+
+    /* Restore stack - ctx->stack now owns the saved memory */
+    joy_stack_free(ctx->stack);
+    ctx->stack = saved;
+    /* Note: don't free saved separately - it's now ctx->stack */
+
+    /* Get the clause to execute */
+    JoyValue clause = items[matched_idx];
+    size_t clause_len = 0;
+    JoyValue* clause_items = NULL;
+    if (clause.type == JOY_QUOTATION) {
+        clause_len = clause.data.quotation->length;
+        clause_items = clause.data.quotation->terms;
+    } else if (clause.type == JOY_LIST) {
+        clause_len = clause.data.list->length;
+        clause_items = clause.data.list->items;
+    } else {
+        return;
+    }
+
+    /* Determine which parts to execute:
+       - If matched: skip B (element 0), use elements 1..n as [T] or [R1 R2 ...]
+       - If default (last): use all elements as [T] or [R1 R2 ...] */
+    size_t start_idx = matched ? 1 : 0;
+    size_t parts_count = clause_len - start_idx;
+
+    if (parts_count == 0) {
+        return;
+    }
+
+    /* Execute: first part, then for each subsequent: recurse, execute */
+    execute_quot(ctx, &clause_items[start_idx]);
+
+    for (size_t j = start_idx + 1; j < clause_len; j++) {
+        condnestrecaux(ctx, clauses);  /* Recurse */
+        execute_quot(ctx, &clause_items[j]);
+    }
+}
+
+static void prim_condlinrec(JoyContext* ctx) {
+    REQUIRE(1, "condlinrec");
+    JoyValue clauses = POP();
+    condnestrecaux(ctx, &clauses);
+    joy_value_free(&clauses);
+}
+
+static void prim_condnestrec(JoyContext* ctx) {
+    REQUIRE(1, "condnestrec");
+    JoyValue clauses = POP();
+    condnestrecaux(ctx, &clauses);
+    joy_value_free(&clauses);
 }
 
 /* ---------- Type Predicates ---------- */
@@ -1075,8 +1696,10 @@ void joy_register_primitives(JoyContext* ctx) {
 
     /* Stack */
     joy_dict_define_primitive(d, "dup", prim_dup);
+    joy_dict_define_primitive(d, "dup2", prim_dup2);
     joy_dict_define_primitive(d, "pop", prim_pop);
     joy_dict_define_primitive(d, "swap", prim_swap);
+    joy_dict_define_primitive(d, "over", prim_over);
     joy_dict_define_primitive(d, "rollup", prim_rollup);
     joy_dict_define_primitive(d, "rolldown", prim_rolldown);
     joy_dict_define_primitive(d, "rotate", prim_rotate);
@@ -1132,6 +1755,7 @@ void joy_register_primitives(JoyContext* ctx) {
     joy_dict_define_primitive(d, "swons", prim_swons);
     joy_dict_define_primitive(d, "uncons", prim_uncons);
     joy_dict_define_primitive(d, "concat", prim_concat);
+    joy_dict_define_primitive(d, "swoncat", prim_swoncat);
     joy_dict_define_primitive(d, "size", prim_size);
     joy_dict_define_primitive(d, "null", prim_null);
     joy_dict_define_primitive(d, "small", prim_small);
@@ -1149,11 +1773,33 @@ void joy_register_primitives(JoyContext* ctx) {
     joy_dict_define_primitive(d, "fold", prim_fold);
     joy_dict_define_primitive(d, "filter", prim_filter);
 
+    /* Recursion combinators */
+    joy_dict_define_primitive(d, "binrec", prim_binrec);
+    joy_dict_define_primitive(d, "linrec", prim_linrec);
+    joy_dict_define_primitive(d, "tailrec", prim_tailrec);
+    joy_dict_define_primitive(d, "primrec", prim_primrec);
+    joy_dict_define_primitive(d, "genrec", prim_genrec);
+
     /* I/O */
     joy_dict_define_primitive(d, "put", prim_put);
     joy_dict_define_primitive(d, "putch", prim_putch);
     joy_dict_define_primitive(d, "putchars", prim_putchars);
     joy_dict_define_primitive(d, ".", prim_newline);
+    joy_dict_define_primitive(d, "newline", prim_newline);
+    joy_dict_define_primitive(d, "putln", prim_putln);
+
+    /* Debug commands (no-ops) */
+    joy_dict_define_primitive(d, "setecho", prim_setecho);
+    joy_dict_define_primitive(d, "__settracegc", prim_settracegc);
+
+    /* Set operations */
+    joy_dict_define_primitive(d, "has", prim_has);
+
+    /* Advanced combinators */
+    joy_dict_define_primitive(d, "cond", prim_cond);
+    joy_dict_define_primitive(d, "infra", prim_infra);
+    joy_dict_define_primitive(d, "condlinrec", prim_condlinrec);
+    joy_dict_define_primitive(d, "condnestrec", prim_condnestrec);
 
     /* Type predicates */
     joy_dict_define_primitive(d, "integer", prim_integer);

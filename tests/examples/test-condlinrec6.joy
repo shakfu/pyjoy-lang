@@ -1,0 +1,11 @@
+(* Test condlinrec ack with i swap pattern from jp-nestrec.joy *)
+DEFINE ack ==
+    [ [ [0 =] [pop 1 +] ]
+      [ [swap 0 =] [popd 1 - 1 swap] [] ]
+      [ [dup rollup [1 -] dip] [swap 1 - ack] ] ]
+    condlinrec .
+
+(* jp-nestrec.joy uses: [i swap ack] map *)
+[ [0 0] [0 1] [0 2] [0 3] ]   [i swap ack]  map  putln.
+[ [1 0] [1 1] [1 2] [1 3] ]   [i swap ack]  map  putln.
+[ [2 0] [2 1] [2 2] [2 3] ]   [i swap ack]  map.

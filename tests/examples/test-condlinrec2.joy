@@ -1,0 +1,8 @@
+(* Test condlinrec *)
+DEFINE ack ==
+    [ [ [0 =] [pop 1 +] ]
+      [ [swap 0 =] [popd 1 - 1 swap] [] ]
+      [ [dup rollup [1 -] dip] [swap 1 - ack] ] ]
+    condlinrec .
+
+0 3 ack.

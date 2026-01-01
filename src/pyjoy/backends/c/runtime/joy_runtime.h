@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <stdio.h>
 
 /* ---------- Joy Type System ---------- */
 
@@ -23,7 +24,8 @@ typedef enum {
     JOY_LIST,
     JOY_SET,
     JOY_QUOTATION,
-    JOY_SYMBOL
+    JOY_SYMBOL,
+    JOY_FILE
 } JoyType;
 
 /* Forward declarations */
@@ -59,6 +61,7 @@ struct JoyValue {
         uint64_t set;       /* bitset for 0-63 */
         JoyQuotation* quotation;  /* owned */
         char* symbol;       /* owned, null-terminated */
+        FILE* file;         /* NOT owned - external file handle */
     } data;
 };
 
@@ -84,6 +87,7 @@ JoyValue joy_set_from(int* members, size_t count);
 JoyValue joy_quotation_empty(void);
 JoyValue joy_quotation_from(JoyValue* terms, size_t count);
 JoyValue joy_symbol(const char* name);
+JoyValue joy_file(FILE* file);
 
 /* ---------- Value Operations ---------- */
 

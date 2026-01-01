@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
 /* Helper macros */
 #define REQUIRE(n, op) \
@@ -1920,6 +1921,191 @@ static void prim_setsize(JoyContext* ctx) {
     PUSH(joy_integer(64));
 }
 
+/* ---------- File I/O ---------- */
+
+static void prim_stdin(JoyContext* ctx) {
+    /* -> S : push standard input stream */
+    PUSH(joy_file(stdin));
+}
+
+static void prim_stdout(JoyContext* ctx) {
+    /* -> S : push standard output stream */
+    PUSH(joy_file(stdout));
+}
+
+static void prim_stderr(JoyContext* ctx) {
+    /* -> S : push standard error stream */
+    PUSH(joy_file(stderr));
+}
+
+/* ---------- Additional Math Functions ---------- */
+
+static void prim_acos(JoyContext* ctx) {
+    /* F -> G : arc cosine */
+    REQUIRE(1, "acos");
+    JoyValue v = POP();
+    double x = (v.type == JOY_INTEGER) ? (double)v.data.integer : v.data.floating;
+    joy_value_free(&v);
+    PUSH(joy_float(acos(x)));
+}
+
+static void prim_asin(JoyContext* ctx) {
+    /* F -> G : arc sine */
+    REQUIRE(1, "asin");
+    JoyValue v = POP();
+    double x = (v.type == JOY_INTEGER) ? (double)v.data.integer : v.data.floating;
+    joy_value_free(&v);
+    PUSH(joy_float(asin(x)));
+}
+
+static void prim_atan(JoyContext* ctx) {
+    /* F -> G : arc tangent */
+    REQUIRE(1, "atan");
+    JoyValue v = POP();
+    double x = (v.type == JOY_INTEGER) ? (double)v.data.integer : v.data.floating;
+    joy_value_free(&v);
+    PUSH(joy_float(atan(x)));
+}
+
+static void prim_atan2(JoyContext* ctx) {
+    /* F G -> H : two-argument arc tangent */
+    REQUIRE(2, "atan2");
+    JoyValue vy = POP();
+    JoyValue vx = POP();
+    double y = (vy.type == JOY_INTEGER) ? (double)vy.data.integer : vy.data.floating;
+    double x = (vx.type == JOY_INTEGER) ? (double)vx.data.integer : vx.data.floating;
+    joy_value_free(&vx);
+    joy_value_free(&vy);
+    PUSH(joy_float(atan2(y, x)));
+}
+
+static void prim_cosh(JoyContext* ctx) {
+    /* F -> G : hyperbolic cosine */
+    REQUIRE(1, "cosh");
+    JoyValue v = POP();
+    double x = (v.type == JOY_INTEGER) ? (double)v.data.integer : v.data.floating;
+    joy_value_free(&v);
+    PUSH(joy_float(cosh(x)));
+}
+
+static void prim_sinh(JoyContext* ctx) {
+    /* F -> G : hyperbolic sine */
+    REQUIRE(1, "sinh");
+    JoyValue v = POP();
+    double x = (v.type == JOY_INTEGER) ? (double)v.data.integer : v.data.floating;
+    joy_value_free(&v);
+    PUSH(joy_float(sinh(x)));
+}
+
+static void prim_tanh(JoyContext* ctx) {
+    /* F -> G : hyperbolic tangent */
+    REQUIRE(1, "tanh");
+    JoyValue v = POP();
+    double x = (v.type == JOY_INTEGER) ? (double)v.data.integer : v.data.floating;
+    joy_value_free(&v);
+    PUSH(joy_float(tanh(x)));
+}
+
+static void prim_log10(JoyContext* ctx) {
+    /* F -> G : base-10 logarithm */
+    REQUIRE(1, "log10");
+    JoyValue v = POP();
+    double x = (v.type == JOY_INTEGER) ? (double)v.data.integer : v.data.floating;
+    joy_value_free(&v);
+    PUSH(joy_float(log10(x)));
+}
+
+/* ---------- String Conversion ---------- */
+
+static void prim_strtol(JoyContext* ctx) {
+    /* S I -> J : convert string to integer with base I */
+    REQUIRE(2, "strtol");
+    JoyValue vbase = POP();
+    JoyValue vstr = POP();
+    EXPECT_TYPE(vstr, JOY_STRING, "strtol");
+    EXPECT_TYPE(vbase, JOY_INTEGER, "strtol");
+
+    char* endptr;
+    long result = strtol(vstr.data.string, &endptr, (int)vbase.data.integer);
+    joy_value_free(&vstr);
+    joy_value_free(&vbase);
+    PUSH(joy_integer(result));
+}
+
+static void prim_strtod(JoyContext* ctx) {
+    /* S -> R : convert string to float */
+    REQUIRE(1, "strtod");
+    JoyValue v = POP();
+    EXPECT_TYPE(v, JOY_STRING, "strtod");
+
+    char* endptr;
+    double result = strtod(v.data.string, &endptr);
+    joy_value_free(&v);
+    PUSH(joy_float(result));
+}
+
+/* ---------- Time and Random ---------- */
+
+static void prim_time(JoyContext* ctx) {
+    /* -> I : push current time as seconds since epoch */
+    PUSH(joy_integer((int64_t)time(NULL)));
+}
+
+static void prim_clock(JoyContext* ctx) {
+    /* -> I : push processor clock ticks */
+    PUSH(joy_integer((int64_t)clock()));
+}
+
+static void prim_rand(JoyContext* ctx) {
+    /* -> I : push random integer */
+    PUSH(joy_integer(rand()));
+}
+
+static void prim_srand(JoyContext* ctx) {
+    /* I -> : seed random number generator */
+    REQUIRE(1, "srand");
+    JoyValue v = POP();
+    EXPECT_TYPE(v, JOY_INTEGER, "srand");
+    srand((unsigned int)v.data.integer);
+    joy_value_free(&v);
+}
+
+static void prim_frexp(JoyContext* ctx) {
+    /* F -> G I : split float into mantissa G and exponent I */
+    REQUIRE(1, "frexp");
+    JoyValue v = POP();
+    double x = (v.type == JOY_INTEGER) ? (double)v.data.integer : v.data.floating;
+    joy_value_free(&v);
+    int exp;
+    double mantissa = frexp(x, &exp);
+    PUSH(joy_float(mantissa));
+    PUSH(joy_integer(exp));
+}
+
+static void prim_ldexp(JoyContext* ctx) {
+    /* F I -> G : multiply F by 2^I */
+    REQUIRE(2, "ldexp");
+    JoyValue vexp = POP();
+    JoyValue vf = POP();
+    EXPECT_TYPE(vexp, JOY_INTEGER, "ldexp");
+    double f = (vf.type == JOY_INTEGER) ? (double)vf.data.integer : vf.data.floating;
+    joy_value_free(&vf);
+    joy_value_free(&vexp);
+    PUSH(joy_float(ldexp(f, (int)vexp.data.integer)));
+}
+
+static void prim_modf(JoyContext* ctx) {
+    /* F -> G H : split F into integer part G and fractional part H */
+    REQUIRE(1, "modf");
+    JoyValue v = POP();
+    double x = (v.type == JOY_INTEGER) ? (double)v.data.integer : v.data.floating;
+    joy_value_free(&v);
+    double intpart;
+    double fracpart = modf(x, &intpart);
+    PUSH(joy_float(fracpart));
+    PUSH(joy_float(intpart));
+}
+
 /* ---------- Additional Aggregate Operations ---------- */
 
 static void prim_unswons(JoyContext* ctx) {
@@ -2451,4 +2637,36 @@ void joy_register_primitives(JoyContext* ctx) {
     joy_dict_define_primitive(d, "name", prim_name);
     joy_dict_define_primitive(d, "intern", prim_intern);
     joy_dict_define_primitive(d, "body", prim_body);
+
+    /* File I/O */
+    joy_dict_define_primitive(d, "stdin", prim_stdin);
+    joy_dict_define_primitive(d, "stdout", prim_stdout);
+    joy_dict_define_primitive(d, "stderr", prim_stderr);
+
+    /* Additional math */
+    joy_dict_define_primitive(d, "acos", prim_acos);
+    joy_dict_define_primitive(d, "asin", prim_asin);
+    joy_dict_define_primitive(d, "atan", prim_atan);
+    joy_dict_define_primitive(d, "atan2", prim_atan2);
+    joy_dict_define_primitive(d, "cosh", prim_cosh);
+    joy_dict_define_primitive(d, "sinh", prim_sinh);
+    joy_dict_define_primitive(d, "tanh", prim_tanh);
+    joy_dict_define_primitive(d, "log10", prim_log10);
+
+    /* String conversion */
+    joy_dict_define_primitive(d, "strtol", prim_strtol);
+    joy_dict_define_primitive(d, "strtod", prim_strtod);
+
+    /* Time and random */
+    joy_dict_define_primitive(d, "time", prim_time);
+    joy_dict_define_primitive(d, "clock", prim_clock);
+    joy_dict_define_primitive(d, "rand", prim_rand);
+    joy_dict_define_primitive(d, "srand", prim_srand);
+
+    /* Additional math */
+    joy_dict_define_primitive(d, "div", prim_div);
+    joy_dict_define_primitive(d, "frexp", prim_frexp);
+    joy_dict_define_primitive(d, "ldexp", prim_ldexp);
+    joy_dict_define_primitive(d, "modf", prim_modf);
+    joy_dict_define_primitive(d, "trunc", prim_trunc);
 }

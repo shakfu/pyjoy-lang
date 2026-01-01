@@ -43,7 +43,7 @@ void joy_error(const char* message) {
 void joy_error_type(const char* op, const char* expected, JoyType got) {
     const char* type_names[] = {
         "INTEGER", "FLOAT", "BOOLEAN", "CHAR", "STRING",
-        "LIST", "SET", "QUOTATION", "SYMBOL"
+        "LIST", "SET", "QUOTATION", "SYMBOL", "FILE"
     };
     fprintf(stderr, "Joy type error in '%s': expected %s, got %s\n",
             op, expected, type_names[got]);
@@ -147,6 +147,12 @@ JoyValue joy_symbol(const char* name) {
     return v;
 }
 
+JoyValue joy_file(FILE* file) {
+    JoyValue v = {.type = JOY_FILE};
+    v.data.file = file;
+    return v;
+}
+
 /* ---------- Value Operations ---------- */
 
 JoyValue joy_value_copy(JoyValue value) {
@@ -226,6 +232,8 @@ bool joy_value_equal(JoyValue a, JoyValue b) {
             return true;
         case JOY_SYMBOL:
             return strcmp(a.data.symbol, b.data.symbol) == 0;
+        case JOY_FILE:
+            return a.data.file == b.data.file;
     }
     return false;
 }
@@ -298,6 +306,16 @@ void joy_value_print(JoyValue value) {
             break;
         case JOY_SYMBOL:
             printf("%s", value.data.symbol);
+            break;
+        case JOY_FILE:
+            if (value.data.file == stdin)
+                printf("<stdin>");
+            else if (value.data.file == stdout)
+                printf("<stdout>");
+            else if (value.data.file == stderr)
+                printf("<stderr>");
+            else
+                printf("<file:%p>", (void*)value.data.file);
             break;
     }
 }

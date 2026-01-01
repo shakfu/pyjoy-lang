@@ -2,9 +2,7 @@
 Tests for pyjoy.scanner module.
 """
 
-import pytest
-
-from pyjoy.scanner import Scanner, tokenize, Token
+from pyjoy.scanner import tokenize
 
 
 class TestScanner:
@@ -89,7 +87,7 @@ class TestScanner:
     def test_define(self):
         tokens = list(tokenize("=="))
         assert len(tokens) == 1
-        assert tokens[0].type == "DEFINE"
+        assert tokens[0].type == "DEF_OP"
 
     def test_semicolon(self):
         tokens = list(tokenize(";"))
@@ -134,11 +132,18 @@ class TestScanner:
         assert tokens[1].column == 4
 
     def test_complex_expression(self):
-        source = '[1 2 3] [dup *] map'
+        source = "[1 2 3] [dup *] map"
         tokens = list(tokenize(source))
         types = [t.type for t in tokens]
         assert types == [
-            "LBRACKET", "INTEGER", "INTEGER", "INTEGER", "RBRACKET",
-            "LBRACKET", "SYMBOL", "SYMBOL", "RBRACKET",
-            "SYMBOL"
+            "LBRACKET",
+            "INTEGER",
+            "INTEGER",
+            "INTEGER",
+            "RBRACKET",
+            "LBRACKET",
+            "SYMBOL",
+            "SYMBOL",
+            "RBRACKET",
+            "SYMBOL",
         ]

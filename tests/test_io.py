@@ -5,11 +5,7 @@ Tests for Phase 5 I/O and system operations.
 import os
 import sys
 import tempfile
-from io import StringIO
 
-import pytest
-
-from pyjoy.evaluator import Evaluator
 from pyjoy.types import JoyType
 
 

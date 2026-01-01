@@ -7,7 +7,7 @@ All operations manipulate values on the stack.
 
 from __future__ import annotations
 
-from typing import Any, List, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, List, Tuple
 
 from pyjoy.errors import JoyStackUnderflow
 from pyjoy.types import JoyValue, python_to_joy

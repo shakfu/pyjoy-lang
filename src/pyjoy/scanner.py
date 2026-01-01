@@ -42,7 +42,12 @@ class Scanner:
         ("RBRACE", r"\}"),  # }
         ("SEMICOLON", r";"),  # ;
         ("PERIOD", r"\."),  # .
-        ("DEFINE", r"=="),  # ==
+        ("DEF_OP", r"=="),  # == (definition operator)
+        # Keywords must come before SYMBOL to match first
+        ("DEFINE_KW", r"\b(?:DEFINE|LIBRA)\b"),  # DEFINE or LIBRA keyword
+        ("PUBLIC_KW", r"\bPUBLIC\b"),  # PUBLIC keyword
+        ("PRIVATE_KW", r"\bPRIVATE\b"),  # PRIVATE keyword
+        ("END_KW", r"\bEND\b"),  # END keyword
         # Word: identifier or operator symbols
         ("SYMBOL", r"[a-zA-Z_][a-zA-Z0-9_\-]*|[+\-*/<=>&|!?@#$%^~:]+"),
         ("WHITESPACE", r"\s+"),  # whitespace

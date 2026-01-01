@@ -4,10 +4,8 @@ pyjoy.repl - Interactive Read-Eval-Print Loop for Joy.
 
 from __future__ import annotations
 
-import sys
-
-from pyjoy.evaluator import Evaluator, list_primitives
 from pyjoy.errors import JoyError
+from pyjoy.evaluator import Evaluator, list_primitives
 
 
 class REPL:

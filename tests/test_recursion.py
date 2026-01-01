@@ -2,9 +2,6 @@
 Tests for Phase 4 recursion combinators.
 """
 
-import pytest
-
-from pyjoy.evaluator import Evaluator
 from pyjoy.types import JoyType
 
 

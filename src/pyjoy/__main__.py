@@ -13,9 +13,9 @@ import argparse
 import sys
 from pathlib import Path
 
+from pyjoy.errors import JoyError
 from pyjoy.evaluator import Evaluator
 from pyjoy.repl import run_repl
-from pyjoy.errors import JoyError
 
 
 def main() -> int:
@@ -25,7 +25,8 @@ def main() -> int:
         description="Joy Programming Language Interpreter",
     )
     parser.add_argument(
-        "-e", "--eval",
+        "-e",
+        "--eval",
         metavar="EXPR",
         help="Evaluate expression and print result",
     )
@@ -35,7 +36,8 @@ def main() -> int:
         help="Joy source file to execute",
     )
     parser.add_argument(
-        "-v", "--version",
+        "-v",
+        "--version",
         action="store_true",
         help="Print version and exit",
     )
@@ -44,6 +46,7 @@ def main() -> int:
 
     if args.version:
         from pyjoy import __version__
+
         print(f"pyjoy {__version__}")
         return 0
 

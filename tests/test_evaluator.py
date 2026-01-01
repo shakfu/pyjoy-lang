@@ -4,9 +4,9 @@ Tests for pyjoy.evaluator module.
 
 import pytest
 
-from pyjoy.evaluator import Evaluator, joy_word, get_primitive, list_primitives
-from pyjoy.types import JoyType, JoyValue, JoyQuotation
-from pyjoy.errors import JoyUndefinedWord, JoyStackUnderflow, JoyTypeError
+from pyjoy.errors import JoyStackUnderflow, JoyTypeError, JoyUndefinedWord
+from pyjoy.evaluator import get_primitive, list_primitives
+from pyjoy.types import JoyQuotation, JoyType, JoyValue
 
 
 class TestEvaluator:

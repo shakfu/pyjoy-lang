@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, FrozenSet, Tuple, Iterator
+from typing import Any, FrozenSet, Iterator, Tuple
 
 from pyjoy.errors import JoySetMemberError, JoyTypeError
 
@@ -67,7 +67,9 @@ class JoyValue:
         elif self.type == JoyType.FILE:
             if self.value is None:
                 return "file:NULL"
-            return f"file:{self.value.name if hasattr(self.value, 'name') else 'stream'}"
+            return (
+                f"file:{self.value.name if hasattr(self.value, 'name') else 'stream'}"
+            )
         else:
             return str(self.value)
 
@@ -244,14 +246,14 @@ def python_to_joy(value: Any) -> JoyValue:
         # Validate set members
         for m in value:
             if not isinstance(m, int):
-                raise JoyTypeError("python_to_joy", "integer set members", type(m).__name__)
+                raise JoyTypeError(
+                    "python_to_joy", "integer set members", type(m).__name__
+                )
         return JoyValue.joy_set(value)
     elif isinstance(value, JoyQuotation):
         return JoyValue.quotation(value)
     else:
-        raise JoyTypeError(
-            "python_to_joy", "convertible type", type(value).__name__
-        )
+        raise JoyTypeError("python_to_joy", "convertible type", type(value).__name__)
 
 
 def joy_to_python(value: JoyValue) -> Any:

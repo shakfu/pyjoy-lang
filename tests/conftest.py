@@ -4,8 +4,8 @@ pytest configuration and fixtures for pyjoy tests.
 
 import pytest
 
-from pyjoy.stack import JoyStack, ExecutionContext
 from pyjoy.evaluator import Evaluator
+from pyjoy.stack import ExecutionContext, JoyStack
 
 
 @pytest.fixture

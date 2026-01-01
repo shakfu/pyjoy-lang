@@ -2,11 +2,7 @@
 Tests for Phase 3 combinators (higher-order operations).
 """
 
-import pytest
-
-from pyjoy.evaluator import Evaluator
 from pyjoy.types import JoyType
-from pyjoy.errors import JoyTypeError
 
 
 class TestExecutionCombinators:

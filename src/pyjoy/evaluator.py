@@ -10,16 +10,15 @@ from functools import wraps
 from typing import Any, Callable, Dict, Optional
 
 from pyjoy.errors import (
-    JoyUndefinedWord,
-    JoyStackUnderflow,
-    JoyTypeError,
     JoyDivisionByZero,
     JoyEmptyAggregate,
+    JoyStackUnderflow,
+    JoyTypeError,
+    JoyUndefinedWord,
 )
-from pyjoy.parser import parse
+from pyjoy.parser import Parser, parse
 from pyjoy.stack import ExecutionContext
-from pyjoy.types import JoyValue, JoyQuotation, JoyType
-
+from pyjoy.types import JoyQuotation, JoyType, JoyValue
 
 # Type alias for Joy word implementations
 WordFunc = Callable[[ExecutionContext], None]
@@ -117,11 +116,21 @@ class Evaluator:
         """
         Parse and execute Joy source code.
 
+        Handles both definitions and executable code.
+        Definitions are registered before program execution.
+
         Args:
             source: Joy source code string
         """
-        program = parse(source)
-        self.execute(program)
+        parser = Parser()
+        result = parser.parse_full(source)
+
+        # Register all definitions
+        for defn in result.definitions:
+            self.define(defn.name, defn.body)
+
+        # Execute the program
+        self.execute(result.program)
 
     def _execute_term(self, term: Any) -> None:
         """
@@ -207,6 +216,7 @@ class Evaluator:
 
 # Stack Operations
 
+
 @joy_word(name="dup", params=1, doc="X -> X X")
 def dup(ctx: ExecutionContext) -> None:
     """Duplicate top of stack."""
@@ -257,6 +267,7 @@ def unstack(ctx: ExecutionContext) -> None:
 
 # Quotation execution
 
+
 @joy_word(name="i", params=1, doc="[P] -> ...")
 def i_combinator(ctx: ExecutionContext) -> None:
     """Execute quotation."""
@@ -267,6 +278,7 @@ def i_combinator(ctx: ExecutionContext) -> None:
 
 
 # I/O (minimal for Phase 1)
+
 
 @joy_word(name=".", params=1, doc="X ->")
 def print_top(ctx: ExecutionContext) -> None:
@@ -1033,7 +1045,10 @@ def cond(ctx: ExecutionContext) -> None:
             ctx.stack._items = saved.copy()
             if isinstance(clause_terms[0], JoyQuotation):
                 ctx.evaluator.execute(clause_terms[0])
-            elif isinstance(clause_terms[0], JoyValue) and clause_terms[0].type == JoyType.QUOTATION:
+            elif (
+                isinstance(clause_terms[0], JoyValue)
+                and clause_terms[0].type == JoyType.QUOTATION
+            ):
                 ctx.evaluator.execute(clause_terms[0].value)
             return
 
@@ -1644,13 +1659,15 @@ def genrec(ctx: ExecutionContext) -> None:
             # Build the recursive quotation: [[B] [T] [R1] R2] genrec
             # This quotation, when executed, will call genrec_aux
             # We create a quotation that captures the continuation
-            rec_quot = JoyQuotation((
-                JoyValue.quotation(b),
-                JoyValue.quotation(t),
-                JoyValue.quotation(r1),
-                JoyValue.quotation(r2),
-                "genrec",
-            ))
+            rec_quot = JoyQuotation(
+                (
+                    JoyValue.quotation(b),
+                    JoyValue.quotation(t),
+                    JoyValue.quotation(r1),
+                    JoyValue.quotation(r2),
+                    "genrec",
+                )
+            )
             ctx.stack.push_value(JoyValue.quotation(rec_quot))
 
             # Execute R2 (which typically uses the recursive quotation)
@@ -1663,11 +1680,10 @@ def genrec(ctx: ExecutionContext) -> None:
 # Phase 5: I/O and System Operations
 # =============================================================================
 
-import sys
-import os
-import time as time_module
 import io as io_module
-
+import os
+import sys
+import time as time_module
 
 # -----------------------------------------------------------------------------
 # Output Primitives
@@ -1717,7 +1733,6 @@ def newline(ctx: ExecutionContext) -> None:
 @joy_word(name="get", params=0, doc="-> F")
 def get(ctx: ExecutionContext) -> None:
     """Read a factor from input and push it onto stack."""
-    from pyjoy.parser import parse
 
     line = input()
     program = parse(line)
@@ -2055,7 +2070,9 @@ def format_(ctx: ExecutionContext) -> None:
     prec = j.value
 
     if spec in ("d", "i"):
-        result = f"{int(n.value):*>{width}.{prec}d}" if prec else f"{int(n.value):>{width}d}"
+        result = (
+            f"{int(n.value):*>{width}.{prec}d}" if prec else f"{int(n.value):>{width}d}"
+        )
     elif spec == "o":
         result = f"{int(n.value):>{width}o}"
     elif spec == "x":

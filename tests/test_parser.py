@@ -4,9 +4,9 @@ Tests for pyjoy.parser module.
 
 import pytest
 
-from pyjoy.parser import Parser, parse
-from pyjoy.types import JoyValue, JoyQuotation, JoyType
-from pyjoy.errors import JoySyntaxError, JoySetMemberError
+from pyjoy.errors import JoySetMemberError, JoySyntaxError
+from pyjoy.parser import parse
+from pyjoy.types import JoyQuotation, JoyType
 
 
 class TestParser:
@@ -128,7 +128,7 @@ class TestParser:
         assert len(prog.terms) == 2
 
     def test_complex_expression(self):
-        prog = parse('[1 2 3] [dup *] map')
+        prog = parse("[1 2 3] [dup *] map")
         assert len(prog.terms) == 3
 
         # First quotation: [1 2 3]

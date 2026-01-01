@@ -4,9 +4,9 @@ Tests for pyjoy.stack module.
 
 import pytest
 
-from pyjoy.stack import JoyStack, ExecutionContext
-from pyjoy.types import JoyType, JoyValue
 from pyjoy.errors import JoyStackUnderflow
+from pyjoy.stack import JoyStack
+from pyjoy.types import JoyType, JoyValue
 
 
 class TestJoyStack:

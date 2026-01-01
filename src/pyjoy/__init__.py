@@ -6,19 +6,19 @@ It is a concatenative, stack-based language where programs are built
 by composing functions.
 """
 
-from pyjoy.types import JoyType, JoyValue, JoyQuotation
-from pyjoy.stack import JoyStack, ExecutionContext
-from pyjoy.scanner import Scanner, Token
-from pyjoy.parser import Parser
-from pyjoy.evaluator import Evaluator, joy_word
 from pyjoy.errors import (
     JoyError,
+    JoySetMemberError,
     JoyStackUnderflow,
+    JoySyntaxError,
     JoyTypeError,
     JoyUndefinedWord,
-    JoySyntaxError,
-    JoySetMemberError,
 )
+from pyjoy.evaluator import Evaluator, joy_word
+from pyjoy.parser import Parser
+from pyjoy.scanner import Scanner, Token
+from pyjoy.stack import ExecutionContext, JoyStack
+from pyjoy.types import JoyQuotation, JoyType, JoyValue
 
 __version__ = "0.1.0"
 

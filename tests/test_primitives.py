@@ -4,9 +4,8 @@ Tests for Phase 2 primitives.
 
 import pytest
 
-from pyjoy.evaluator import Evaluator
+from pyjoy.errors import JoyDivisionByZero, JoyEmptyAggregate
 from pyjoy.types import JoyType
-from pyjoy.errors import JoyDivisionByZero, JoyEmptyAggregate, JoyTypeError
 
 
 class TestStackOperations:

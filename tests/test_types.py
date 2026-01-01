@@ -4,17 +4,17 @@ Tests for pyjoy.types module.
 
 import pytest
 
+from pyjoy.errors import JoySetMemberError, JoyTypeError
 from pyjoy.types import (
+    EMPTY_LIST,
+    FALSE,
+    TRUE,
+    JoyQuotation,
     JoyType,
     JoyValue,
-    JoyQuotation,
-    python_to_joy,
     joy_to_python,
-    TRUE,
-    FALSE,
-    EMPTY_LIST,
+    python_to_joy,
 )
-from pyjoy.errors import JoySetMemberError, JoyTypeError
 
 
 class TestJoyValue:

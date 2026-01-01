@@ -6,15 +6,31 @@ Converts a token stream into an AST (nested structure of terms).
 
 from __future__ import annotations
 
-from typing import Any, List, Optional, Set, Tuple
+from dataclasses import dataclass
+from typing import Any, List, Optional, Set
 
-from pyjoy.errors import JoySyntaxError, JoySetMemberError
+from pyjoy.errors import JoySetMemberError, JoySyntaxError
 from pyjoy.scanner import Scanner, Token
-from pyjoy.types import JoyValue, JoyQuotation
-
+from pyjoy.types import JoyQuotation, JoyValue
 
 # Sentinel for terms to skip
 _SKIP = object()
+
+
+@dataclass
+class Definition:
+    """A user-defined word: name == body."""
+
+    name: str
+    body: JoyQuotation
+
+
+@dataclass
+class ParseResult:
+    """Result of parsing Joy source code."""
+
+    definitions: List[Definition]
+    program: JoyQuotation
 
 
 class Parser:
@@ -33,7 +49,7 @@ class Parser:
 
     def parse(self, source: str) -> JoyQuotation:
         """
-        Parse source code into a program.
+        Parse source code into a program (backward compatible).
 
         Args:
             source: Joy source code
@@ -41,12 +57,40 @@ class Parser:
         Returns:
             JoyQuotation representing the program
         """
+        result = self.parse_full(source)
+        return result.program
+
+    def parse_full(self, source: str) -> ParseResult:
+        """
+        Parse source code into definitions and program.
+
+        Args:
+            source: Joy source code
+
+        Returns:
+            ParseResult with definitions and executable program
+        """
         scanner = Scanner()
         self._tokens = list(scanner.tokenize(source))
         self._pos = 0
 
-        terms = self._parse_terms(set())
-        return JoyQuotation(tuple(terms))
+        definitions: List[Definition] = []
+        terms: List[Any] = []
+
+        while self._current() is not None:
+            token = self._current()
+
+            # Check for DEFINE/LIBRA block
+            if token and token.type == "DEFINE_KW":
+                defs = self._parse_definition_block()
+                definitions.extend(defs)
+            else:
+                # Parse regular terms
+                term = self._parse_term()
+                if term is not _SKIP:
+                    terms.append(term)
+
+        return ParseResult(definitions, JoyQuotation(tuple(terms)))
 
     def _current(self) -> Optional[Token]:
         """Get current token or None if at end."""
@@ -82,6 +126,94 @@ class Parser:
                 terms.append(term)
 
         return terms
+
+    def _parse_definition_block(self) -> List[Definition]:
+        """
+        Parse a DEFINE/LIBRA block.
+
+        Syntax:
+            DEFINE name1 == body1; name2 == body2 .
+            DEFINE name == body .
+
+        Also handles PUBLIC and PRIVATE modifiers.
+
+        Returns:
+            List of Definition objects
+        """
+        start_token = self._advance()  # Consume DEFINE/LIBRA
+        assert start_token is not None
+
+        definitions: List[Definition] = []
+        is_public = True  # Default visibility
+
+        while True:
+            token = self._current()
+            if token is None:
+                break
+
+            # Handle visibility modifiers
+            if token.type == "PUBLIC_KW":
+                self._advance()
+                is_public = True
+                continue
+            elif token.type == "PRIVATE_KW":
+                self._advance()
+                is_public = False
+                continue
+            elif token.type == "END_KW":
+                self._advance()
+                break
+
+            # End of definition block
+            if token.type == "PERIOD":
+                self._advance()
+                break
+
+            # Expect a symbol (name)
+            if token.type != "SYMBOL":
+                raise JoySyntaxError(
+                    f"Expected name in definition, got {token.type}",
+                    token.line,
+                    token.column,
+                )
+
+            name = token.value
+            self._advance()
+
+            # Expect ==
+            token = self._current()
+            if token is None or token.type != "DEF_OP":
+                raise JoySyntaxError(
+                    "Expected '==' after name in definition",
+                    start_token.line,
+                    start_token.column,
+                )
+            self._advance()
+
+            # Parse body until ; or .
+            body_terms = self._parse_terms({"SEMICOLON", "PERIOD", "DEFINE_KW"})
+            body = JoyQuotation(tuple(body_terms))
+
+            definitions.append(Definition(name, body))
+
+            # Check for separator
+            token = self._current()
+            if token is None:
+                break
+            if token.type == "SEMICOLON":
+                self._advance()
+                continue
+            elif token.type == "PERIOD":
+                self._advance()
+                break
+            elif token.type == "DEFINE_KW":
+                # Another DEFINE block starts - don't consume it
+                break
+            else:
+                # Continue parsing more definitions or body terms
+                continue
+
+        return definitions
 
     def _parse_term(self) -> Any:
         """
@@ -134,8 +266,13 @@ class Parser:
             self._advance()
             return _SKIP
 
-        elif token.type == "DEFINE":
-            # Definition marker - skip for now
+        elif token.type == "DEF_OP":
+            # == should only appear in definition context, skip if stray
+            self._advance()
+            return _SKIP
+
+        elif token.type in ("DEFINE_KW", "PUBLIC_KW", "PRIVATE_KW", "END_KW"):
+            # Keywords - skip when encountered outside definition context
             self._advance()
             return _SKIP
 

@@ -1,4 +1,4 @@
-.PHONY: all sync repl build test coverage lint clean
+.PHONY: all sync repl build test coverage lint format typecheck clean
 
 all: sync
 
@@ -22,6 +22,9 @@ lint:
 
 format:
 	@uv run ruff format src/ tests/
+
+typecheck:
+	@uv run ty check src/
 
 clean:
 	@rm -rf dist .pytest_cache .coverage htmlcov __pycache__ src/pyjoy/__pycache__ tests/__pycache__

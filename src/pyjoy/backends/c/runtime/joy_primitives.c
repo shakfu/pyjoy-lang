@@ -1253,6 +1253,132 @@ static void prim_filter(JoyContext* ctx) {
     PUSH(rv);
 }
 
+static void prim_split(JoyContext* ctx) {
+    /* A [B] -> A1 A2 : split aggregate A into two based on test B */
+    REQUIRE(2, "split");
+    JoyValue quot = POP();
+    JoyValue agg = POP();
+
+    if (agg.type != JOY_LIST && agg.type != JOY_QUOTATION) {
+        joy_error_type("split", "aggregate", agg.type);
+    }
+
+    size_t len = agg.type == JOY_LIST ? agg.data.list->length : agg.data.quotation->length;
+    JoyValue* items = agg.type == JOY_LIST ? agg.data.list->items : agg.data.quotation->terms;
+
+    JoyList* pass = joy_list_new(len);
+    JoyList* fail = joy_list_new(len);
+
+    for (size_t i = 0; i < len; i++) {
+        JoyValue item = joy_value_copy(items[i]);
+        PUSH(joy_value_copy(item));
+        if (quot.type == JOY_QUOTATION) {
+            joy_execute_quotation(ctx, quot.data.quotation);
+        } else if (quot.type == JOY_LIST) {
+            for (size_t j = 0; j < quot.data.list->length; j++) {
+                joy_execute_value(ctx, quot.data.list->items[j]);
+            }
+        }
+        JoyValue pred = POP();
+        if (joy_value_truthy(pred)) {
+            joy_list_push(pass, item);
+        } else {
+            joy_list_push(fail, item);
+        }
+        joy_value_free(&pred);
+    }
+
+    joy_value_free(&agg);
+    joy_value_free(&quot);
+
+    JoyValue rv1 = {.type = JOY_LIST, .data.list = pass};
+    JoyValue rv2 = {.type = JOY_LIST, .data.list = fail};
+    PUSH(rv1);
+    PUSH(rv2);
+}
+
+static void prim_enconcat(JoyContext* ctx) {
+    /* X S T -> U : concatenate S and T with X inserted between */
+    /* Equivalent to: swapd cons concat */
+    REQUIRE(3, "enconcat");
+    JoyValue t = POP();
+    JoyValue s = POP();
+    JoyValue x = POP();
+
+    /* First, cons X onto S */
+    if (s.type == JOY_LIST) {
+        JoyList* s_with_x = joy_list_new(s.data.list->length + 1);
+        for (size_t i = 0; i < s.data.list->length; i++) {
+            joy_list_push(s_with_x, joy_value_copy(s.data.list->items[i]));
+        }
+        joy_list_push(s_with_x, joy_value_copy(x));
+
+        /* Then concat with T */
+        if (t.type == JOY_LIST) {
+            JoyList* result = joy_list_concat(s_with_x, t.data.list);
+            joy_list_free(s_with_x);
+            joy_value_free(&s);
+            joy_value_free(&t);
+            joy_value_free(&x);
+            JoyValue rv = {.type = JOY_LIST, .data.list = result};
+            PUSH(rv);
+        } else {
+            joy_list_free(s_with_x);
+            joy_value_free(&s);
+            joy_value_free(&t);
+            joy_value_free(&x);
+            joy_error("enconcat: S and T must have same type");
+        }
+    } else if (s.type == JOY_QUOTATION) {
+        JoyQuotation* s_with_x = joy_quotation_new(s.data.quotation->length + 1);
+        for (size_t i = 0; i < s.data.quotation->length; i++) {
+            joy_quotation_push(s_with_x, joy_value_copy(s.data.quotation->terms[i]));
+        }
+        joy_quotation_push(s_with_x, joy_value_copy(x));
+
+        /* Then concat with T */
+        if (t.type == JOY_QUOTATION) {
+            JoyQuotation* result = joy_quotation_concat(s_with_x, t.data.quotation);
+            joy_quotation_free(s_with_x);
+            joy_value_free(&s);
+            joy_value_free(&t);
+            joy_value_free(&x);
+            JoyValue rv = {.type = JOY_QUOTATION, .data.quotation = result};
+            PUSH(rv);
+        } else {
+            joy_quotation_free(s_with_x);
+            joy_value_free(&s);
+            joy_value_free(&t);
+            joy_value_free(&x);
+            joy_error("enconcat: S and T must have same type");
+        }
+    } else if (s.type == JOY_STRING) {
+        /* For strings, X must be a char */
+        if (x.type != JOY_CHAR || t.type != JOY_STRING) {
+            joy_value_free(&s);
+            joy_value_free(&t);
+            joy_value_free(&x);
+            joy_error("enconcat: for strings, X must be char and T must be string");
+        }
+        size_t len = strlen(s.data.string) + 1 + strlen(t.data.string) + 1;
+        char* result = malloc(len);
+        strcpy(result, s.data.string);
+        size_t slen = strlen(s.data.string);
+        result[slen] = x.data.character;
+        result[slen + 1] = '\0';
+        strcat(result, t.data.string);
+        joy_value_free(&s);
+        joy_value_free(&t);
+        joy_value_free(&x);
+        PUSH(joy_string_owned(result));
+    } else {
+        joy_value_free(&s);
+        joy_value_free(&t);
+        joy_value_free(&x);
+        joy_error_type("enconcat", "aggregate", s.type);
+    }
+}
+
 /* ---------- Recursion Combinators ---------- */
 
 static void binrec_aux(JoyContext* ctx, JoyValue* p, JoyValue* t, JoyValue* r1, JoyValue* r2);
@@ -2669,4 +2795,8 @@ void joy_register_primitives(JoyContext* ctx) {
     joy_dict_define_primitive(d, "ldexp", prim_ldexp);
     joy_dict_define_primitive(d, "modf", prim_modf);
     joy_dict_define_primitive(d, "trunc", prim_trunc);
+
+    /* Aggregate combinators */
+    joy_dict_define_primitive(d, "split", prim_split);
+    joy_dict_define_primitive(d, "enconcat", prim_enconcat);
 }

@@ -1,4 +1,4 @@
-.PHONY: all sync repl build test coverage lint format typecheck clean
+.PHONY: all sync repl build test coverage lint format typecheck clean compile-c run-c
 
 all: sync
 
@@ -26,5 +26,16 @@ format:
 typecheck:
 	@uv run ty check src/
 
+# Compile example Joy program to C
+compile-c: sync
+	@mkdir -p build
+	@uv run python -m pyjoy compile tests/examples/demo.joy -o build -n demo
+	@echo "Binary: build/demo"
+
+# Compile and run the example
+run-c: compile-c
+	@echo "--- Running compiled Joy program ---"
+	@./build/demo
+
 clean:
-	@rm -rf dist .pytest_cache .coverage htmlcov __pycache__ src/pyjoy/__pycache__ tests/__pycache__
+	@rm -rf dist build .pytest_cache .coverage htmlcov __pycache__ src/pyjoy/__pycache__ tests/__pycache__

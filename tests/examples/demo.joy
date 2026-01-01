@@ -1,0 +1,49 @@
+(* demo.joy - Example Joy program demonstrating language features *)
+
+(* User-defined functions *)
+DEFINE square == dup * .
+DEFINE cube == dup dup * * .
+DEFINE fact == [1 <=] [pop 1] [dup 1 - fact *] ifte .
+DEFINE fib == [2 <] [] [dup 1 - fib swap 2 - fib +] ifte .
+DEFINE sum-list == 0 [+] fold .
+DEFINE double-all == [2 *] map .
+DEFINE println == put "\n" putchars .
+DEFINE print-header == putchars "\n" putchars .
+
+(* Main program *)
+
+(* Arithmetic *)
+"=== Arithmetic ===" print-header
+"3 + 4 = " putchars 3 4 + println
+"10 - 3 = " putchars 10 3 - println
+"6 * 7 = " putchars 6 7 * println
+
+(* Stack operations *)
+"\n=== Stack Operations ===" print-header
+"5 squared = " putchars 5 square println
+"3 cubed = " putchars 3 cube println
+
+(* Factorial *)
+"\n=== Factorial ===" print-header
+"5! = " putchars 5 fact println
+"7! = " putchars 7 fact println
+
+(* Fibonacci *)
+"\n=== Fibonacci ===" print-header
+"fib(10) = " putchars 10 fib println
+
+(* List operations *)
+"\n=== List Operations ===" print-header
+"sum [1 2 3 4 5] = " putchars [1 2 3 4 5] sum-list println
+"double [1 2 3] = " putchars [1 2 3] double-all println
+
+(* Conditionals *)
+"\n=== Conditionals ===" print-header
+"5 > 0 ? square : neg => " putchars 5 [0 >] [square] [neg] ifte println
+"-3 > 0 ? square : neg => " putchars -3 [0 >] [square] [neg] ifte println
+
+(* Loops *)
+"\n=== Loops ===" print-header
+"1 * 2^5 = " putchars 1 5 [2 *] times println
+
+"\nDone!" print-header

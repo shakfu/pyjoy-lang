@@ -80,7 +80,7 @@ uv run python -m pyjoy compile program.joy -o build -n myprogram --run
 
 ## Status
 
-- **C Backend Coverage:** 180/203 primitives (88%) + 8 extensions
+- **C Backend Coverage:** 196/203 primitives (96%) + 8 extensions
 - **Python Interpreter:** Full Joy language support
 - **Compilation:** Joy source to C executable via `pyjoy compile`
 - **Tests:** 411 pytest tests passing
@@ -91,6 +91,11 @@ uv run python -m pyjoy compile program.joy -o build -n myprogram --run
 - Arity combinators: `unary2`, `unary3`, `unary4`
 - Control flow: `construct`
 - Time operations: `localtime`, `gmtime`, `mktime`, `strftime`
+- Formatting: `format`, `formatf`
+- Case/switch: `opcase`, `case`
+- Predicate: `user`
+- Tree combinators: `treestep`, `treerec`, `treegenrec`
+- Interpreter control: `abort`, `quit`, `gc`, `setautoput`, `setundeferror`, `autoput`, `undeferror`, `echo`
 - File I/O: `fopen`, `fclose`, `fflush`, `feof`, `ferror`, `fgetch`, `fgets`, `fread`, `fput`, `fputch`, `fputchars`, `fputstring`, `fwrite`, `fseek`, `ftell`, `fremove`, `frename`
 - System interaction: `system`, `getenv`, `argc`, `argv`
 - Arity combinators: `nullary`, `unary`, `binary`, `ternary`, `cleave`

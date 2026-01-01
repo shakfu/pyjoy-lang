@@ -179,6 +179,9 @@ struct JoyContext {
     JoyStack* stack;
     JoyDict* dictionary;
     bool trace_enabled;
+    int autoput;      /* 0=off, 1=on (auto-print stack after each line) */
+    int undeferror;   /* 0=off (undefined symbols are errors), 1=on (allow undefined) */
+    int echo;         /* 0=none, 1=echo input, 2=echo output, 3=echo both */
 };
 
 /* ---------- Dictionary Operations ---------- */

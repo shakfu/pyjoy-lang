@@ -690,6 +690,9 @@ JoyContext* joy_context_new(void) {
     ctx->stack = joy_stack_new(64);
     ctx->dictionary = joy_dict_new();
     ctx->trace_enabled = false;
+    ctx->autoput = 0;      /* off by default in compiled code */
+    ctx->undeferror = 0;   /* undefined symbols are errors by default */
+    ctx->echo = 0;         /* no echo by default */
     return ctx;
 }
 

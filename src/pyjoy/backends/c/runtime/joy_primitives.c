@@ -2720,6 +2720,128 @@ static void prim_condnestrec(JoyContext* ctx) {
     joy_value_free(&clauses);
 }
 
+/* ---------- Tree Combinators ---------- */
+
+/* Helper: check if value is a leaf (not a list/quotation) */
+static bool is_tree_leaf(JoyValue* v) {
+    return v->type != JOY_LIST && v->type != JOY_QUOTATION;
+}
+
+static void treestep_aux(JoyContext* ctx, JoyValue* t, JoyValue* p);
+
+static void treestep_aux(JoyContext* ctx, JoyValue* t, JoyValue* p) {
+    if (is_tree_leaf(t)) {
+        /* Leaf: push t and execute p */
+        PUSH(joy_value_copy(*t));
+        execute_quot(ctx, p);
+    } else {
+        /* List/quotation: recursively treestep each element */
+        size_t len = t->type == JOY_LIST ? t->data.list->length : t->data.quotation->length;
+        JoyValue* items = t->type == JOY_LIST ? t->data.list->items : t->data.quotation->terms;
+        for (size_t i = 0; i < len; i++) {
+            treestep_aux(ctx, &items[i], p);
+        }
+    }
+}
+
+static void prim_treestep(JoyContext* ctx) {
+    /* T [P] -> ... : step through tree T, applying P to each leaf */
+    REQUIRE(2, "treestep");
+    JoyValue p = POP();
+    JoyValue t = POP();
+    treestep_aux(ctx, &t, &p);
+    joy_value_free(&t);
+    joy_value_free(&p);
+}
+
+static JoyValue treerec_aux(JoyContext* ctx, JoyValue* t, JoyValue* o, JoyValue* c);
+
+static JoyValue treerec_aux(JoyContext* ctx, JoyValue* t, JoyValue* o, JoyValue* c) {
+    if (is_tree_leaf(t)) {
+        /* Leaf: push t and execute o, return top of stack */
+        PUSH(joy_value_copy(*t));
+        execute_quot(ctx, o);
+        return POP();
+    } else {
+        /* List: recursively process each subtree, collect results, apply c */
+        size_t len = t->type == JOY_LIST ? t->data.list->length : t->data.quotation->length;
+        JoyValue* items = t->type == JOY_LIST ? t->data.list->items : t->data.quotation->terms;
+
+        /* Collect results from subtrees into a list */
+        JoyList* results = joy_list_new(len);
+        for (size_t i = 0; i < len; i++) {
+            JoyValue r = treerec_aux(ctx, &items[i], o, c);
+            joy_list_push(results, r);
+        }
+
+        /* Push results list and execute c */
+        JoyValue rv = {.type = JOY_LIST, .data.list = results};
+        PUSH(rv);
+        execute_quot(ctx, c);
+        return POP();
+    }
+}
+
+static void prim_treerec(JoyContext* ctx) {
+    /* T [O] [C] -> ... : tree recursion with O for leaves, C for combining */
+    REQUIRE(3, "treerec");
+    JoyValue c = POP();
+    JoyValue o = POP();
+    JoyValue t = POP();
+    JoyValue result = treerec_aux(ctx, &t, &o, &c);
+    PUSH(result);
+    joy_value_free(&t);
+    joy_value_free(&o);
+    joy_value_free(&c);
+}
+
+static JoyValue treegenrec_aux(JoyContext* ctx, JoyValue* t, JoyValue* o1, JoyValue* o2, JoyValue* c);
+
+static JoyValue treegenrec_aux(JoyContext* ctx, JoyValue* t, JoyValue* o1, JoyValue* o2, JoyValue* c) {
+    if (is_tree_leaf(t)) {
+        /* Leaf: push t and execute o1, return result */
+        PUSH(joy_value_copy(*t));
+        execute_quot(ctx, o1);
+        return POP();
+    } else {
+        /* Branch: push t, execute o2, then for each subtree recurse, then apply c */
+        size_t len = t->type == JOY_LIST ? t->data.list->length : t->data.quotation->length;
+        JoyValue* items = t->type == JOY_LIST ? t->data.list->items : t->data.quotation->terms;
+
+        /* Execute o2 on the tree node first */
+        PUSH(joy_value_copy(*t));
+        execute_quot(ctx, o2);
+
+        /* Recursively process each subtree */
+        JoyList* results = joy_list_new(len);
+        for (size_t i = 0; i < len; i++) {
+            JoyValue r = treegenrec_aux(ctx, &items[i], o1, o2, c);
+            joy_list_push(results, r);
+        }
+
+        /* Push results list and execute c */
+        JoyValue rv = {.type = JOY_LIST, .data.list = results};
+        PUSH(rv);
+        execute_quot(ctx, c);
+        return POP();
+    }
+}
+
+static void prim_treegenrec(JoyContext* ctx) {
+    /* T [O1] [O2] [C] -> ... : general tree recursion */
+    REQUIRE(4, "treegenrec");
+    JoyValue c = POP();
+    JoyValue o2 = POP();
+    JoyValue o1 = POP();
+    JoyValue t = POP();
+    JoyValue result = treegenrec_aux(ctx, &t, &o1, &o2, &c);
+    PUSH(result);
+    joy_value_free(&t);
+    joy_value_free(&o1);
+    joy_value_free(&o2);
+    joy_value_free(&c);
+}
+
 /* ---------- Type Predicates ---------- */
 
 static void prim_integer(JoyContext* ctx) {
@@ -2786,6 +2908,23 @@ static void prim_file_p(JoyContext* ctx) {
     REQUIRE(1, "file");
     JoyValue v = POP();
     PUSH(joy_boolean(v.type == JOY_FILE));
+    joy_value_free(&v);
+}
+
+static void prim_user(JoyContext* ctx) {
+    /* X -> B : true if X is a user-defined symbol (not a primitive) */
+    REQUIRE(1, "user");
+    JoyValue v = POP();
+
+    bool is_user = false;
+    if (v.type == JOY_SYMBOL) {
+        JoyWord* word = joy_dict_lookup(ctx->dictionary, v.data.symbol);
+        if (word && !word->is_primitive) {
+            is_user = true;
+        }
+    }
+
+    PUSH(joy_boolean(is_user));
     joy_value_free(&v);
 }
 
@@ -3387,6 +3526,215 @@ static void prim_strftime(JoyContext* ctx) {
     }
 }
 
+static void prim_format(JoyContext* ctx) {
+    /* N C I J -> S : format integer N with char C, width I, precision J */
+    REQUIRE(4, "format");
+    JoyValue j = POP();  /* precision */
+    JoyValue i = POP();  /* width */
+    JoyValue c = POP();  /* format char */
+    JoyValue n = POP();  /* integer to format */
+
+    EXPECT_TYPE(j, JOY_INTEGER, "format");
+    EXPECT_TYPE(i, JOY_INTEGER, "format");
+    EXPECT_TYPE(c, JOY_CHAR, "format");
+    EXPECT_TYPE(n, JOY_INTEGER, "format");
+
+    char fmt[32];
+    char buffer[256];
+    int width = (int)i.data.integer;
+    int precision = (int)j.data.integer;
+    char spec = c.data.character;
+
+    /* Build format string like "%-10.5d" */
+    snprintf(fmt, sizeof(fmt), "%%%d.%d%c", width, precision, spec);
+
+    /* Format the integer */
+    snprintf(buffer, sizeof(buffer), fmt, (long)n.data.integer);
+
+    joy_value_free(&n);
+    joy_value_free(&c);
+    joy_value_free(&i);
+    joy_value_free(&j);
+
+    PUSH(joy_string(buffer));
+}
+
+static void prim_formatf(JoyContext* ctx) {
+    /* F C I J -> S : format float F with char C, width I, precision J */
+    REQUIRE(4, "formatf");
+    JoyValue j = POP();  /* precision */
+    JoyValue i = POP();  /* width */
+    JoyValue c = POP();  /* format char */
+    JoyValue f = POP();  /* float to format */
+
+    EXPECT_TYPE(j, JOY_INTEGER, "formatf");
+    EXPECT_TYPE(i, JOY_INTEGER, "formatf");
+    EXPECT_TYPE(c, JOY_CHAR, "formatf");
+
+    double val;
+    if (f.type == JOY_FLOAT) {
+        val = f.data.floating;
+    } else if (f.type == JOY_INTEGER) {
+        val = (double)f.data.integer;
+    } else {
+        joy_value_free(&f);
+        joy_value_free(&c);
+        joy_value_free(&i);
+        joy_value_free(&j);
+        joy_error_type("formatf", "FLOAT or INTEGER", f.type);
+    }
+
+    char fmt[32];
+    char buffer[256];
+    int width = (int)i.data.integer;
+    int precision = (int)j.data.integer;
+    char spec = c.data.character;
+
+    /* Build format string like "%-10.5f" */
+    snprintf(fmt, sizeof(fmt), "%%%d.%d%c", width, precision, spec);
+
+    /* Format the float */
+    snprintf(buffer, sizeof(buffer), fmt, val);
+
+    joy_value_free(&f);
+    joy_value_free(&c);
+    joy_value_free(&i);
+    joy_value_free(&j);
+
+    PUSH(joy_string(buffer));
+}
+
+static void prim_opcase(JoyContext* ctx) {
+    /* X [..[X Xs]..] -> [Xs] : case with quotation result */
+    REQUIRE(2, "opcase");
+    JoyValue cases = POP();
+    JoyValue x = POP();
+
+    if (cases.type != JOY_LIST && cases.type != JOY_QUOTATION) {
+        joy_value_free(&x);
+        joy_value_free(&cases);
+        joy_error_type("opcase", "LIST or QUOTATION", cases.type);
+    }
+
+    size_t n = cases.type == JOY_LIST ? cases.data.list->length : cases.data.quotation->length;
+    JoyValue* items = cases.type == JOY_LIST ? cases.data.list->items : cases.data.quotation->terms;
+
+    /* Search for matching case */
+    for (size_t i = 0; i < n; i++) {
+        JoyValue c = items[i];
+        if (c.type != JOY_LIST && c.type != JOY_QUOTATION) continue;
+
+        size_t clen = c.type == JOY_LIST ? c.data.list->length : c.data.quotation->length;
+        JoyValue* citems = c.type == JOY_LIST ? c.data.list->items : c.data.quotation->terms;
+
+        if (clen == 0) continue;
+
+        /* Check if first element matches x */
+        if (joy_value_equal(x, citems[0])) {
+            /* Return rest of case as quotation */
+            JoyQuotation* result = joy_quotation_new(clen - 1);
+            for (size_t j = 1; j < clen; j++) {
+                joy_quotation_push(result, joy_value_copy(citems[j]));
+            }
+            joy_value_free(&x);
+            joy_value_free(&cases);
+            JoyValue rv = {.type = JOY_QUOTATION, .data.quotation = result};
+            PUSH(rv);
+            return;
+        }
+    }
+
+    /* No match found - return last case (default) or empty */
+    if (n > 0) {
+        JoyValue last = items[n - 1];
+        if (last.type == JOY_LIST || last.type == JOY_QUOTATION) {
+            size_t llen = last.type == JOY_LIST ? last.data.list->length : last.data.quotation->length;
+            JoyValue* litems = last.type == JOY_LIST ? last.data.list->items : last.data.quotation->terms;
+            JoyQuotation* result = joy_quotation_new(llen > 0 ? llen - 1 : 0);
+            for (size_t j = 1; j < llen; j++) {
+                joy_quotation_push(result, joy_value_copy(litems[j]));
+            }
+            joy_value_free(&x);
+            joy_value_free(&cases);
+            JoyValue rv = {.type = JOY_QUOTATION, .data.quotation = result};
+            PUSH(rv);
+            return;
+        }
+    }
+
+    /* Empty result */
+    joy_value_free(&x);
+    joy_value_free(&cases);
+    JoyValue rv = {.type = JOY_QUOTATION, .data.quotation = joy_quotation_new(0)};
+    PUSH(rv);
+}
+
+static void prim_case(JoyContext* ctx) {
+    /* X [..[X Y]..] -> Y i : case with immediate execution */
+    REQUIRE(2, "case");
+    JoyValue cases = POP();
+    JoyValue x = POP();
+
+    if (cases.type != JOY_LIST && cases.type != JOY_QUOTATION) {
+        joy_value_free(&x);
+        joy_value_free(&cases);
+        joy_error_type("case", "LIST or QUOTATION", cases.type);
+    }
+
+    size_t n = cases.type == JOY_LIST ? cases.data.list->length : cases.data.quotation->length;
+    JoyValue* items = cases.type == JOY_LIST ? cases.data.list->items : cases.data.quotation->terms;
+
+    /* Search for matching case */
+    for (size_t i = 0; i < n; i++) {
+        JoyValue c = items[i];
+        if (c.type != JOY_LIST && c.type != JOY_QUOTATION) continue;
+
+        size_t clen = c.type == JOY_LIST ? c.data.list->length : c.data.quotation->length;
+        JoyValue* citems = c.type == JOY_LIST ? c.data.list->items : c.data.quotation->terms;
+
+        if (clen < 2) continue;
+
+        /* Check if first element matches x */
+        if (joy_value_equal(x, citems[0])) {
+            /* Get the body (rest of case) and execute it */
+            JoyQuotation* body = joy_quotation_new(clen - 1);
+            for (size_t j = 1; j < clen; j++) {
+                joy_quotation_push(body, joy_value_copy(citems[j]));
+            }
+            joy_value_free(&x);
+            joy_value_free(&cases);
+            JoyValue quot = {.type = JOY_QUOTATION, .data.quotation = body};
+            execute_quot(ctx, &quot);
+            joy_value_free(&quot);
+            return;
+        }
+    }
+
+    /* No match - execute last case (default) */
+    if (n > 0) {
+        JoyValue last = items[n - 1];
+        if (last.type == JOY_LIST || last.type == JOY_QUOTATION) {
+            size_t llen = last.type == JOY_LIST ? last.data.list->length : last.data.quotation->length;
+            JoyValue* litems = last.type == JOY_LIST ? last.data.list->items : last.data.quotation->terms;
+            if (llen > 1) {
+                JoyQuotation* body = joy_quotation_new(llen - 1);
+                for (size_t j = 1; j < llen; j++) {
+                    joy_quotation_push(body, joy_value_copy(litems[j]));
+                }
+                joy_value_free(&x);
+                joy_value_free(&cases);
+                JoyValue quot = {.type = JOY_QUOTATION, .data.quotation = body};
+                execute_quot(ctx, &quot);
+                joy_value_free(&quot);
+                return;
+            }
+        }
+    }
+
+    joy_value_free(&x);
+    joy_value_free(&cases);
+}
+
 static void prim_frexp(JoyContext* ctx) {
     /* F -> G I : split float into mantissa G and exponent I */
     REQUIRE(1, "frexp");
@@ -3849,6 +4197,58 @@ static void prim_argv(JoyContext* ctx) {
     PUSH(v);
 }
 
+/* ---------- Interpreter Control ---------- */
+
+static void prim_abort(JoyContext* ctx) {
+    /* -> : abort execution with error status */
+    (void)ctx;  /* unused */
+    exit(1);
+}
+
+static void prim_quit(JoyContext* ctx) {
+    /* -> : quit interpreter with success status */
+    (void)ctx;  /* unused */
+    exit(0);
+}
+
+static void prim_gc(JoyContext* ctx) {
+    /* -> : force garbage collection (no-op in compiled code) */
+    (void)ctx;  /* no GC in compiled C code - memory is managed manually */
+}
+
+static void prim_setautoput(JoyContext* ctx) {
+    /* I -> : set autoput flag (0=off, 1=on) */
+    REQUIRE(1, "setautoput");
+    JoyValue v = POP();
+    EXPECT_TYPE(v, JOY_INTEGER, "setautoput");
+    ctx->autoput = (int)v.data.integer;
+    joy_value_free(&v);
+}
+
+static void prim_setundeferror(JoyContext* ctx) {
+    /* I -> : set undeferror flag (0=off, 1=on) */
+    REQUIRE(1, "setundeferror");
+    JoyValue v = POP();
+    EXPECT_TYPE(v, JOY_INTEGER, "setundeferror");
+    ctx->undeferror = (int)v.data.integer;
+    joy_value_free(&v);
+}
+
+static void prim_autoput(JoyContext* ctx) {
+    /* -> I : push autoput flag value */
+    PUSH(joy_integer(ctx->autoput));
+}
+
+static void prim_undeferror(JoyContext* ctx) {
+    /* -> I : push undeferror flag value */
+    PUSH(joy_integer(ctx->undeferror));
+}
+
+static void prim_echo(JoyContext* ctx) {
+    /* -> I : push echo flag value (0..3) */
+    PUSH(joy_integer(ctx->echo));
+}
+
 /* ---------- Registration ---------- */
 
 void joy_register_primitives(JoyContext* ctx) {
@@ -3970,6 +4370,11 @@ void joy_register_primitives(JoyContext* ctx) {
     joy_dict_define_primitive(d, "condlinrec", prim_condlinrec);
     joy_dict_define_primitive(d, "condnestrec", prim_condnestrec);
 
+    /* Tree combinators */
+    joy_dict_define_primitive(d, "treestep", prim_treestep);
+    joy_dict_define_primitive(d, "treerec", prim_treerec);
+    joy_dict_define_primitive(d, "treegenrec", prim_treegenrec);
+
     /* Type predicates */
     joy_dict_define_primitive(d, "integer", prim_integer);
     joy_dict_define_primitive(d, "float", prim_float_p);
@@ -3980,6 +4385,7 @@ void joy_register_primitives(JoyContext* ctx) {
     joy_dict_define_primitive(d, "set", prim_set_p);
     joy_dict_define_primitive(d, "leaf", prim_leaf);
     joy_dict_define_primitive(d, "file", prim_file_p);
+    joy_dict_define_primitive(d, "user", prim_user);
 
     /* Type conversion */
     joy_dict_define_primitive(d, "ord", prim_ord);
@@ -4029,6 +4435,10 @@ void joy_register_primitives(JoyContext* ctx) {
     joy_dict_define_primitive(d, "gmtime", prim_gmtime);
     joy_dict_define_primitive(d, "mktime", prim_mktime);
     joy_dict_define_primitive(d, "strftime", prim_strftime);
+    joy_dict_define_primitive(d, "format", prim_format);
+    joy_dict_define_primitive(d, "formatf", prim_formatf);
+    joy_dict_define_primitive(d, "opcase", prim_opcase);
+    joy_dict_define_primitive(d, "case", prim_case);
 
     /* Additional math */
     joy_dict_define_primitive(d, "div", prim_div);
@@ -4077,6 +4487,16 @@ void joy_register_primitives(JoyContext* ctx) {
     joy_dict_define_primitive(d, "getenv", prim_getenv);
     joy_dict_define_primitive(d, "argc", prim_argc);
     joy_dict_define_primitive(d, "argv", prim_argv);
+
+    /* Interpreter control */
+    joy_dict_define_primitive(d, "abort", prim_abort);
+    joy_dict_define_primitive(d, "quit", prim_quit);
+    joy_dict_define_primitive(d, "gc", prim_gc);
+    joy_dict_define_primitive(d, "setautoput", prim_setautoput);
+    joy_dict_define_primitive(d, "setundeferror", prim_setundeferror);
+    joy_dict_define_primitive(d, "autoput", prim_autoput);
+    joy_dict_define_primitive(d, "undeferror", prim_undeferror);
+    joy_dict_define_primitive(d, "echo", prim_echo);
 
     /* File I/O */
     joy_dict_define_primitive(d, "fopen", prim_fopen);

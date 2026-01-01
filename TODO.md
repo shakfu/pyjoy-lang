@@ -2,7 +2,7 @@
 
 ## Primitives Coverage
 
-**Current: 180/203 (88%)** + 8 extensions
+**Current: 196/203 (96%)** + 8 extensions
 
 Run `uv run python scripts/check_c_coverage.py` for full report.
 
@@ -17,61 +17,24 @@ Run `uv run python scripts/check_c_coverage.py` for full report.
 
 ---
 
-## Remaining Primitives (23)
+## Remaining Primitives (7)
 
-### Operand (5)
+### Operand (2)
 
 | Primitive | Signature | Description |
 |-----------|-----------|-------------|
 | `conts` | `-> [[P] [Q] ..]` | Push continuation stack |
-| `autoput` | `-> I` | Push autoput flag value |
-| `undeferror` | `-> I` | Push undeferror flag value |
 | `undefs` | `->` | Push list of undefined symbols |
-| `echo` | `-> I` | Push echo flag value (0..3) |
 
-### Operator (4)
-
-#### Formatting
-| Primitive | Signature | Description |
-|-----------|-----------|-------------|
-| `format` | `N C I J -> S` | Format integer N with char C, width I, precision J |
-| `formatf` | `F C I J -> S` | Format float F with char C, width I, precision J |
-
-#### Case/Switch
-| Primitive | Signature | Description |
-|-----------|-----------|-------------|
-| `opcase` | `X [..[X Xs]..] -> [Xs]` | Case with quotation result |
-| `case` | `X [..[X Y]..] -> Y i` | Case with immediate execution |
-
-### Predicate (1)
-
-| Primitive | Signature | Description |
-|-----------|-----------|-------------|
-| `user` | `X -> B` | Test if X is user-defined |
-
-### Combinator (3)
-
-#### Tree Combinators
-| Primitive | Signature | Description |
-|-----------|-----------|-------------|
-| `treestep` | `T [P] -> ...` | Step through tree T with P |
-| `treerec` | `T [O] [C] -> ...` | Tree recursion |
-| `treegenrec` | `T [O1] [O2] [C] -> ...` | General tree recursion |
-
-### Miscellaneous Commands (10)
+### Miscellaneous Commands (5)
 
 | Primitive | Signature | Description |
 |-----------|-----------|-------------|
 | `help` | `->` | Display help |
 | `helpdetail` | `[S1 S2 ..] ->` | Display detailed help for symbols |
 | `manual` | `->` | Display full manual |
-| `setautoput` | `I ->` | Set autoput flag |
-| `setundeferror` | `I ->` | Set undeferror flag |
-| `gc` | `->` | Force garbage collection |
 | `get` | `-> F` | Read factor from input |
 | `include` | `"filnam.ext" ->` | Include Joy source file |
-| `abort` | `->` | Abort execution |
-| `quit` | `->` | Quit interpreter |
 
 ---
 
@@ -105,7 +68,8 @@ Run `uv run python scripts/check_c_coverage.py` for full report.
 - [x] ~~Arity combinators (`unary2`, `unary3`, `unary4`)~~
 - [x] ~~Control flow (`construct`)~~
 - [x] ~~Time operations (`localtime`, `gmtime`, `mktime`, `strftime`)~~
-- [ ] Tree combinators
+- [x] ~~Tree combinators (`treestep`, `treerec`, `treegenrec`)~~
+- [x] ~~Predicate (`user`)~~
 
 ### Low (interpreter-specific)
 - [ ] `help`, `helpdetail`, `manual`

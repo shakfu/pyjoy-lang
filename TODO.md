@@ -1,10 +1,15 @@
-# pyjoy C Backend - TODO
+# pyjoy - Status
 
 ## Primitives Coverage
 
-**Current: 201/203 (99%)** + 8 extensions
+**Python Interpreter:** 203/203 (100%)
+**C Backend:** 203/203 (100%) + 8 extensions
 
-Run `uv run python scripts/check_c_coverage.py` for full report.
+Notes:
+- `include` is handled at compile-time by the preprocessor
+- `get` prints a warning in compiled code (no Joy parser at runtime)
+
+Run `uv run python scripts/check_c_coverage.py` for the C backend report.
 
 ### Extensions (8)
 - `.` / `newline` - Print newline
@@ -17,29 +22,33 @@ Run `uv run python scripts/check_c_coverage.py` for full report.
 
 ---
 
-## Remaining Primitives (2)
+## Special Handling
 
-### Miscellaneous Commands (2)
-
-| Primitive | Signature | Description |
-|-----------|-----------|-------------|
-| `get` | `-> F` | Read factor from input |
-| `include` | `"filnam.ext" ->` | Include Joy source file |
+| Primitive | Python | C Backend |
+|-----------|--------|-----------|
+| `get` | Full support (parses input) | Warning only (no parser at runtime) |
+| `include` | Full support | Compile-time preprocessing |
 
 ---
 
-## Future Enhancements
+## Compile-time Features
 
-### Compile-time `include` Support
+### `include` Support (Implemented)
 
-Currently `include` cannot be meaningfully implemented as a runtime primitive in compiled code (no Joy parser available at runtime). To support `include`:
+The `include` primitive is handled at compile-time by the preprocessor (`pyjoy.backends.c.preprocessor`):
 
-1. Modify the Python compiler/converter to detect `include` calls with string literals
-2. Read and parse the included Joy source file at compile time
-3. Inline the included definitions into the generated C code
-4. Handle recursive includes and circular dependency detection
+1. Detects `include "filename"` patterns in Joy source
+2. Reads and parses included Joy source files at compile time
+3. Inlines definitions from included files into the generated C code
+4. Handles recursive includes with circular dependency detection
 
-This would allow Joy programs using `include` to compile correctly.
+Usage:
+```joy
+include "mylib.joy"
+5 square .
+```
+
+The preprocessor merges definitions from included files before C code generation.
 
 ---
 
@@ -56,6 +65,7 @@ This would allow Joy programs using `include` to compile correctly.
 - [x] Application combinators: `app1`, `app11`, `app12`, `app2`, `app3`, `app4`
 - [x] Interpreter control: `abort`, `quit`, `gc`, `setautoput`, `setundeferror`, `autoput`, `undeferror`, `echo`, `conts`, `undefs`
 - [x] Help system: `help`, `helpdetail`, `manual`
+- [x] Compile-time `include` preprocessing with recursive include and circular dependency handling
 
 ---
 

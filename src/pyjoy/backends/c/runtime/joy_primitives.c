@@ -4292,6 +4292,14 @@ static void prim_manual(JoyContext* ctx) {
     printf("Aggregates: first rest cons size null etc.\n");
 }
 
+static void prim_get(JoyContext* ctx) {
+    /* -> F : read factor from input (no-op in compiled code) */
+    (void)ctx;
+    /* No Joy parser available at runtime in compiled code.
+     * Programs requiring get should use the Python interpreter. */
+    fprintf(stderr, "Warning: 'get' is not supported in compiled code\n");
+}
+
 /* ---------- Registration ---------- */
 
 void joy_register_primitives(JoyContext* ctx) {
@@ -4545,6 +4553,7 @@ void joy_register_primitives(JoyContext* ctx) {
     joy_dict_define_primitive(d, "help", prim_help);
     joy_dict_define_primitive(d, "helpdetail", prim_helpdetail);
     joy_dict_define_primitive(d, "manual", prim_manual);
+    joy_dict_define_primitive(d, "get", prim_get);
 
     /* File I/O */
     joy_dict_define_primitive(d, "fopen", prim_fopen);

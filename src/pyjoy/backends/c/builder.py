@@ -240,6 +240,7 @@ def compile_joy_to_c(
     output_dir: str | Path | None = None,
     target_name: str = "joy_program",
     compile_executable: bool = True,
+    source_path: str | Path | None = None,
 ) -> dict[str, Any]:
     """
     High-level function to compile Joy source to C.
@@ -249,6 +250,7 @@ def compile_joy_to_c(
         output_dir: Directory for output files (default: temp directory)
         target_name: Name for the output executable
         compile_executable: Whether to compile the C code
+        source_path: Path to the source file (for resolving includes)
 
     Returns:
         Dictionary with:
@@ -257,13 +259,17 @@ def compile_joy_to_c(
             - "executable": Path to executable (if compiled)
             - "makefile": Path to Makefile (if output_dir provided)
     """
-    from ...parser import Parser
     from .converter import JoyToCConverter
     from .emitter import CEmitter
+    from .preprocessor import preprocess_includes
 
-    # Parse Joy source
-    parser = Parser()
-    result = parser.parse_full(source)
+    # Parse and preprocess (expands includes)
+    if source_path:
+        result = preprocess_includes(source, source_path=source_path)
+    else:
+        from ...parser import Parser
+        parser = Parser()
+        result = parser.parse_full(source)
 
     # Convert definitions list to dictionary
     definitions = {d.name: d.body for d in result.definitions}

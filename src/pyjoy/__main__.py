@@ -144,6 +144,7 @@ def compile_to_c(args: argparse.Namespace) -> int:
             output_dir=output_dir,
             target_name=target_name,
             compile_executable=not args.no_compile,
+            source_path=source_path,
         )
 
         print(f"Generated: {result['c_file']}")

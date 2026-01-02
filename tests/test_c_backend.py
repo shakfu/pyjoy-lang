@@ -12,6 +12,7 @@ import pytest
 from pyjoy.backends.c.builder import CBuilder, compile_joy_to_c
 from pyjoy.backends.c.converter import CValue, JoyToCConverter
 from pyjoy.backends.c.emitter import CEmitter
+from pyjoy.backends.c.preprocessor import IncludePreprocessor, preprocess_includes, IncludeError
 
 # Skip all tests if no C compiler is available
 pytestmark = pytest.mark.skipif(
@@ -502,3 +503,180 @@ class TestCompilation:
 
             assert proc.returncode == 0
             assert (Path(tmpdir) / "test_make").exists()
+
+
+class TestIncludePreprocessor:
+    """Tests for compile-time include expansion."""
+
+    def test_preprocess_no_includes(self):
+        """Preprocess source with no includes."""
+        source = "1 2 +"
+        result = preprocess_includes(source)
+
+        assert len(result.definitions) == 0
+        assert len(result.program.terms) == 3
+
+    def test_preprocess_with_definitions(self):
+        """Preprocess source with definitions but no includes."""
+        source = "DEFINE square == dup * . 5 square"
+        result = preprocess_includes(source)
+
+        assert len(result.definitions) == 1
+        assert result.definitions[0].name == "square"
+
+    def test_include_simple_file(self):
+        """Include a simple Joy file."""
+        with TemporaryDirectory() as tmpdir:
+            tmppath = Path(tmpdir)
+
+            # Create library file
+            lib_file = tmppath / "mylib.joy"
+            lib_file.write_text("DEFINE double == 2 * .")
+
+            # Create main file
+            main_file = tmppath / "main.joy"
+            main_source = 'include "mylib.joy"\n5 double'
+
+            result = preprocess_includes(main_source, source_path=main_file)
+
+            # Should have the definition from the included file
+            assert len(result.definitions) == 1
+            assert result.definitions[0].name == "double"
+
+            # Include should be removed from program
+            assert len(result.program.terms) == 2  # 5 and double
+
+    def test_include_with_local_definitions(self):
+        """Include file combined with local definitions."""
+        with TemporaryDirectory() as tmpdir:
+            tmppath = Path(tmpdir)
+
+            # Create library file
+            lib_file = tmppath / "lib.joy"
+            lib_file.write_text("DEFINE inc == 1 + .")
+
+            # Main has both include and local definition
+            main_file = tmppath / "main.joy"
+            main_source = '''include "lib.joy"
+DEFINE double == 2 * .
+5 inc double'''
+
+            result = preprocess_includes(main_source, source_path=main_file)
+
+            # Should have both definitions
+            assert len(result.definitions) == 2
+            names = [d.name for d in result.definitions]
+            assert "inc" in names
+            assert "double" in names
+
+    def test_recursive_includes(self):
+        """Handle recursive includes."""
+        with TemporaryDirectory() as tmpdir:
+            tmppath = Path(tmpdir)
+
+            # Create base library
+            base_lib = tmppath / "base.joy"
+            base_lib.write_text("DEFINE inc == 1 + .")
+
+            # Create mid library that includes base
+            mid_lib = tmppath / "mid.joy"
+            mid_lib.write_text('include "base.joy"\nDEFINE double == 2 * .')
+
+            # Main includes mid
+            main_file = tmppath / "main.joy"
+            main_source = 'include "mid.joy"\n5 inc double'
+
+            result = preprocess_includes(main_source, source_path=main_file)
+
+            # Should have both definitions from recursive includes
+            assert len(result.definitions) == 2
+            names = [d.name for d in result.definitions]
+            assert "inc" in names
+            assert "double" in names
+
+    def test_circular_include_handled(self):
+        """Circular includes are handled (second include skipped)."""
+        with TemporaryDirectory() as tmpdir:
+            tmppath = Path(tmpdir)
+
+            # Create two files that include each other
+            file_a = tmppath / "a.joy"
+            file_b = tmppath / "b.joy"
+
+            file_a.write_text('include "b.joy"\nDEFINE from_a == 1 .')
+            file_b.write_text('include "a.joy"\nDEFINE from_b == 2 .')
+
+            main_file = tmppath / "main.joy"
+            main_source = 'include "a.joy"\n42'
+
+            # Should not infinite loop - circular include is silently skipped
+            result = preprocess_includes(main_source, source_path=main_file)
+
+            # Should have definitions from both files
+            names = [d.name for d in result.definitions]
+            assert "from_a" in names
+            assert "from_b" in names
+
+    def test_include_file_not_found(self):
+        """Include of non-existent file raises error."""
+        with TemporaryDirectory() as tmpdir:
+            tmppath = Path(tmpdir)
+
+            main_file = tmppath / "main.joy"
+            main_source = 'include "nonexistent.joy"\n42'
+
+            with pytest.raises(IncludeError) as exc_info:
+                preprocess_includes(main_source, source_path=main_file)
+
+            assert "not found" in str(exc_info.value).lower()
+
+    def test_include_in_quotation_ignored(self):
+        """Include inside quotation is not expanded (kept as symbol)."""
+        with TemporaryDirectory() as tmpdir:
+            tmppath = Path(tmpdir)
+
+            # Create library file
+            lib_file = tmppath / "lib.joy"
+            lib_file.write_text("DEFINE test == 1 .")
+
+            main_file = tmppath / "main.joy"
+            # Include in quotation should be kept as-is
+            main_source = '[include "lib.joy"] 42'
+
+            result = preprocess_includes(main_source, source_path=main_file)
+
+            # The quotation should still contain "include" and the string
+            # (not expanded because it's inside a quotation)
+            assert len(result.program.terms) == 2
+
+    def test_compile_with_include(self):
+        """Full compilation with include."""
+        with TemporaryDirectory() as tmpdir:
+            tmppath = Path(tmpdir)
+
+            # Create library file
+            lib_file = tmppath / "mathlib.joy"
+            lib_file.write_text("DEFINE square == dup * .")
+
+            # Create main source
+            main_file = tmppath / "main.joy"
+            main_source = 'include "mathlib.joy"\n7 square'
+            main_file.write_text(main_source)
+
+            # Compile with source_path for include resolution
+            result = compile_joy_to_c(
+                main_source,
+                output_dir=tmppath,
+                target_name="test_include",
+                compile_executable=True,
+                source_path=main_file,
+            )
+
+            proc = subprocess.run(
+                [str(result["executable"])],
+                capture_output=True,
+                text=True,
+            )
+
+            assert proc.returncode == 0
+            assert "49" in proc.stdout  # 7 squared

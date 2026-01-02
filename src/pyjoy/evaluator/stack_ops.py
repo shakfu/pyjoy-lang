@@ -46,8 +46,8 @@ def swap(ctx: ExecutionContext) -> None:
 
 @joy_word(name="stack", params=0, doc=".. -> .. [..]")
 def stack_word(ctx: ExecutionContext) -> None:
-    """Push a list of the current stack contents."""
-    items = tuple(ctx.stack.items())
+    """Push a list of the current stack contents (TOS first)."""
+    items = tuple(reversed(ctx.stack.items()))
     ctx.stack.push_value(JoyValue.list(items))
 
 

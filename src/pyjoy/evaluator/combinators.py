@@ -51,7 +51,11 @@ def _get_aggregate(v: JoyValue, op: str) -> tuple:
 
 
 def _make_aggregate(items: tuple, original_type: JoyType) -> JoyValue:
-    """Create aggregate from items, matching original type."""
+    """Create aggregate from items, matching original type.
+
+    Preserves STRING and SET types. QUOTATION and LIST both return LIST
+    since they're interchangeable in most Joy contexts.
+    """
     if original_type == JoyType.STRING:
         try:
             chars = "".join(v.value for v in items if v.type == JoyType.CHAR)
@@ -64,10 +68,8 @@ def _make_aggregate(items: tuple, original_type: JoyType) -> JoyValue:
             return JoyValue.joy_set(members)
         except Exception:
             return JoyValue.list(items)
-    elif original_type == JoyType.QUOTATION:
-        # Preserve quotation type - items may be raw terms or JoyValues
-        return JoyValue.quotation(JoyQuotation(items))
     else:
+        # QUOTATION and LIST both return LIST
         return JoyValue.list(items)
 
 
@@ -451,13 +453,13 @@ def opcase(ctx: ExecutionContext) -> None:
         if case_terms is None:
             continue
 
-        is_last = (i == len(case_list) - 1)
+        is_last = i == len(case_list) - 1
 
         if is_last:
             # Last case is default - return entire case as list
-            ctx.stack.push_value(JoyValue.list(tuple(
-                _term_to_value(t) for t in case_terms
-            )))
+            ctx.stack.push_value(
+                JoyValue.list(tuple(_term_to_value(t) for t in case_terms))
+            )
             return
 
         if len(case_terms) < 1:
@@ -468,9 +470,7 @@ def opcase(ctx: ExecutionContext) -> None:
 
         if types_match(pattern, x):
             # Match found - return body as list
-            ctx.stack.push_value(JoyValue.list(tuple(
-                _term_to_value(t) for t in body
-            )))
+            ctx.stack.push_value(JoyValue.list(tuple(_term_to_value(t) for t in body)))
             return
 
     # No match and no default - push empty list
@@ -533,8 +533,8 @@ def filter_combinator(ctx: ExecutionContext) -> None:
         if test_result.is_truthy():
             results.append(joy_item)
 
-    # Filter produces a list, even if input was quotation
-    ctx.stack.push_value(JoyValue.list(tuple(results)))
+    # Preserve original aggregate type
+    ctx.stack.push_value(_make_aggregate(tuple(results), agg.type))
 
 
 @joy_word(name="split", params=2, doc="A [P] -> A1 A2")
@@ -559,9 +559,9 @@ def split(ctx: ExecutionContext) -> None:
         else:
             not_satisfies.append(joy_item)
 
-    # Split produces lists, even if input was quotation
-    ctx.stack.push_value(JoyValue.list(tuple(satisfies)))
-    ctx.stack.push_value(JoyValue.list(tuple(not_satisfies)))
+    # Preserve original aggregate type for both partitions
+    ctx.stack.push_value(_make_aggregate(tuple(satisfies), agg.type))
+    ctx.stack.push_value(_make_aggregate(tuple(not_satisfies), agg.type))
 
 
 @joy_word(name="fold", params=3, doc="A V [P] -> V'")
@@ -621,6 +621,11 @@ def all_combinator(ctx: ExecutionContext) -> None:
     q = expect_quotation(quot, "all")
     items = _get_aggregate(agg, "all")
 
+    # Empty predicate returns false
+    if len(q.terms) == 0:
+        ctx.stack.push_value(JoyValue.boolean(False))
+        return
+
     for item in items:
         saved = ctx.stack._items.copy()
         ctx.stack.push_value(_ensure_joy_value(item))
@@ -641,6 +646,11 @@ def some_combinator(ctx: ExecutionContext) -> None:
     quot, agg = ctx.stack.pop_n(2)
     q = expect_quotation(quot, "some")
     items = _get_aggregate(agg, "some")
+
+    # Empty predicate returns false
+    if len(q.terms) == 0:
+        ctx.stack.push_value(JoyValue.boolean(False))
+        return
 
     for item in items:
         saved = ctx.stack._items.copy()
@@ -1301,11 +1311,13 @@ def treerec(ctx: ExecutionContext) -> None:
             # Non-leaf: push node, push [[O] [C] treerec], execute C
             ctx.stack.push_value(node)
             # Build the recursive quotation [[O] [C] treerec]
-            rec_quot = JoyQuotation((
-                JoyValue.quotation(o),
-                JoyValue.quotation(c),
-                "treerec",
-            ))
+            rec_quot = JoyQuotation(
+                (
+                    JoyValue.quotation(o),
+                    JoyValue.quotation(c),
+                    "treerec",
+                )
+            )
             ctx.stack.push_value(JoyValue.quotation(rec_quot))
             ctx.evaluator.execute(c)
         else:
@@ -1332,12 +1344,14 @@ def treegenrec(ctx: ExecutionContext) -> None:
         ctx.stack.push_value(tree)
         ctx.evaluator.execute(o2)
         # Build the recursive quotation [[O1] [O2] [C] treegenrec]
-        rec_quot = JoyQuotation((
-            JoyValue.quotation(o1),
-            JoyValue.quotation(o2),
-            JoyValue.quotation(c),
-            "treegenrec",
-        ))
+        rec_quot = JoyQuotation(
+            (
+                JoyValue.quotation(o1),
+                JoyValue.quotation(o2),
+                JoyValue.quotation(c),
+                "treegenrec",
+            )
+        )
         ctx.stack.push_value(JoyValue.quotation(rec_quot))
         ctx.evaluator.execute(c)
     else:

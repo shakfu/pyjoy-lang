@@ -3,6 +3,6 @@
     version : 1.6
     date    : 03/22/24
 *)
-"test" "w" fopen "\"test\"\n" fputstring fclose.
-$ cat test
-$ rm test
+"build/test" "w" fopen "\"test\"\n" fputstring fclose.
+$ cat build/test
+$ rm build/test

@@ -18,7 +18,6 @@ import subprocess
 import sys
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 from pyjoy.errors import JoyError
 from pyjoy.evaluator import Evaluator
@@ -352,39 +351,46 @@ def cmd_test_compile(files: list[Path], verbose: bool = False) -> int:
     print("Running C compilation tests...")
     print()
 
+    # Create build directory
+    build_dir = Path("build")
+    build_dir.mkdir(exist_ok=True)
+
     passed = 0
     failed = 0
 
-    with TemporaryDirectory() as tmpdir:
-        for filepath in files:
-            try:
-                source = filepath.read_text(encoding="utf-8")
-                result = compile_joy_to_c(
-                    source,
-                    output_dir=tmpdir,
-                    target_name=filepath.stem,
-                    compile_executable=True,
-                    source_path=filepath,
-                )
+    for filepath in files:
+        # Create subdirectory for this file: build/<stem>/
+        file_build_dir = build_dir / filepath.stem
+        file_build_dir.mkdir(exist_ok=True)
 
-                proc = subprocess.run(
-                    [str(result["executable"])],
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                )
+        try:
+            source = filepath.read_text(encoding="utf-8")
+            result = compile_joy_to_c(
+                source,
+                output_dir=file_build_dir,
+                target_name=filepath.stem,
+                compile_executable=True,
+                source_path=filepath,
+            )
 
-                if "false" in proc.stdout.lower():
-                    failed += 1
-                    print(f"  FAIL (C): {filepath.name}")
-                else:
-                    passed += 1
-                    if verbose:
-                        print(f"  PASS (C): {filepath.name}")
+            proc = subprocess.run(
+                [str(result["executable"])],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
 
-            except Exception as e:
+            if "false" in proc.stdout.lower():
                 failed += 1
-                print(f"  ERROR (C): {filepath.name} - {e}")
+                print(f"  FAIL (C): {filepath.name}")
+            else:
+                passed += 1
+                if verbose:
+                    print(f"  PASS (C): {filepath.name}")
+
+        except Exception as e:
+            failed += 1
+            print(f"  ERROR (C): {filepath.name} - {e}")
 
     print()
     print(f"C Results: {passed} passed, {failed} failed")

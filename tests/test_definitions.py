@@ -197,7 +197,9 @@ class TestBackwardCompatibility:
         evaluator.run("1 ; 2 ; 3")
         assert evaluator.stack.depth == 3
 
-    def test_periods_ignored(self, evaluator):
-        """Periods outside definitions are ignored."""
+    def test_period_is_print_operator(self, evaluator):
+        """Period outside definitions is the print operator."""
         evaluator.run("1 . 2 . 3")
-        assert evaluator.stack.depth == 3
+        # . prints and pops: 1 is printed/popped, 2 is printed/popped, 3 remains
+        assert evaluator.stack.depth == 1
+        assert evaluator.stack.pop().value == 3

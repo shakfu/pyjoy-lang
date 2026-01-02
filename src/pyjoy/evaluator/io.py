@@ -53,6 +53,14 @@ def put(ctx: ExecutionContext) -> None:
     print(repr(x), end="")
 
 
+@joy_word(name=".", params=0, doc="X ->")
+def dot(ctx: ExecutionContext) -> None:
+    """Write X to output with newline, then pop X off stack. No-op if stack empty."""
+    if ctx.stack.depth > 0:
+        x = ctx.stack.pop()
+        print(repr(x))
+
+
 @joy_word(name="putln", params=1, doc="X ->")
 def putln(ctx: ExecutionContext) -> None:
     """Write X to output with newline."""

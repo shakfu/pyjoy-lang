@@ -122,10 +122,11 @@ class TestParser:
         assert prog.terms[0].value == 1
         assert prog.terms[1].value == 2
 
-    def test_period_skipped(self):
+    def test_period_is_print_operator(self):
         prog = parse("1 . 2")
-        # Note: "." alone is PERIOD token (skipped), not a symbol
-        assert len(prog.terms) == 2
+        # "." is the print operator, parsed as a symbol
+        assert len(prog.terms) == 3
+        assert prog.terms[1] == "."
 
     def test_complex_expression(self):
         prog = parse("[1 2 3] [dup *] map")

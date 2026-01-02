@@ -160,7 +160,7 @@ def casting_(ctx: ExecutionContext) -> None:
         elif x.type == JoyType.STRING and x.value:
             ctx.stack.push_value(JoyValue.char(x.value[0]))
         else:
-            ctx.stack.push_value(JoyValue.char('\0'))
+            ctx.stack.push_value(JoyValue.char("\0"))
 
     elif target_type == 3:  # int
         if x.type == JoyType.INTEGER:
@@ -194,7 +194,8 @@ def casting_(ctx: ExecutionContext) -> None:
                 ctx.stack.push_value(JoyValue.joy_set(frozenset(bits)))
         elif x.type == JoyType.LIST:
             items = frozenset(
-                v.value for v in x.value
+                v.value
+                for v in x.value
                 if isinstance(v, JoyValue) and v.type == JoyType.INTEGER
             )
             ctx.stack.push_value(JoyValue.joy_set(items))
@@ -211,7 +212,8 @@ def casting_(ctx: ExecutionContext) -> None:
             ctx.stack.push_value(JoyValue.char(chr(x.value & 0xFF)))
         elif x.type == JoyType.LIST:
             chars = "".join(
-                v.value for v in x.value
+                v.value
+                for v in x.value
                 if isinstance(v, JoyValue) and v.type == JoyType.CHAR
             )
             ctx.stack.push_value(JoyValue.string(chars))
@@ -259,7 +261,7 @@ def casting_(ctx: ExecutionContext) -> None:
         if x.type == JoyType.INTEGER:
             # Reinterpret int bits as float64
             try:
-                result = struct.unpack('d', struct.pack('q', x.value))[0]
+                result = struct.unpack("d", struct.pack("q", x.value))[0]
                 ctx.stack.push_value(JoyValue.floating(result))
             except struct.error:
                 ctx.stack.push_value(JoyValue.floating(0.0))

@@ -1767,6 +1767,16 @@ static void prim_putln(JoyContext* ctx) {
     joy_value_free(&v);
 }
 
+static void prim_dot(JoyContext* ctx) {
+    /* Print top of stack with newline, or no-op if stack empty */
+    if (ctx->stack->depth > 0) {
+        JoyValue v = POP();
+        joy_value_print(v);
+        printf("\n");
+        joy_value_free(&v);
+    }
+}
+
 /* Debug commands - no-op in compiled code */
 static void prim_setecho(JoyContext* ctx) {
     REQUIRE(1, "setecho");
@@ -3966,46 +3976,86 @@ static void prim_compare(JoyContext* ctx) {
     PUSH(joy_integer(result));
 }
 
+/* Helper to get aggregate length (works for LIST and QUOTATION) */
+static size_t joy_aggregate_length(JoyValue v) {
+    if (v.type == JOY_LIST) return v.data.list->length;
+    if (v.type == JOY_QUOTATION) return v.data.quotation->length;
+    return 0;
+}
+
+/* Helper to get aggregate item (works for LIST and QUOTATION) */
+static JoyValue joy_aggregate_item(JoyValue v, size_t i) {
+    if (v.type == JOY_LIST) return v.data.list->items[i];
+    if (v.type == JOY_QUOTATION) return v.data.quotation->terms[i];
+    return joy_integer(0);
+}
+
 /* Helper for equal - recursive structural equality */
 static bool joy_equal_values(JoyValue a, JoyValue b) {
-    if (a.type != b.type) return false;
-
-    switch (a.type) {
-        case JOY_INTEGER:
-            return a.data.integer == b.data.integer;
-        case JOY_FLOAT:
-            return a.data.floating == b.data.floating;
-        case JOY_BOOLEAN:
-            return a.data.boolean == b.data.boolean;
-        case JOY_CHAR:
-            return a.data.character == b.data.character;
-        case JOY_STRING:
-            return strcmp(a.data.string, b.data.string) == 0;
-        case JOY_SET:
-            return a.data.set == b.data.set;
-        case JOY_SYMBOL:
-            return strcmp(a.data.symbol, b.data.symbol) == 0;
-        case JOY_LIST:
-            if (a.data.list->length != b.data.list->length) return false;
-            for (size_t i = 0; i < a.data.list->length; i++) {
-                if (!joy_equal_values(a.data.list->items[i],
-                                      b.data.list->items[i])) {
-                    return false;
+    /* Same type - direct comparison */
+    if (a.type == b.type) {
+        switch (a.type) {
+            case JOY_INTEGER:
+                return a.data.integer == b.data.integer;
+            case JOY_FLOAT:
+                return a.data.floating == b.data.floating;
+            case JOY_BOOLEAN:
+                return a.data.boolean == b.data.boolean;
+            case JOY_CHAR:
+                return a.data.character == b.data.character;
+            case JOY_STRING:
+                return strcmp(a.data.string, b.data.string) == 0;
+            case JOY_SET:
+                return a.data.set == b.data.set;
+            case JOY_SYMBOL:
+                return strcmp(a.data.symbol, b.data.symbol) == 0;
+            case JOY_LIST:
+                if (a.data.list->length != b.data.list->length) return false;
+                for (size_t i = 0; i < a.data.list->length; i++) {
+                    if (!joy_equal_values(a.data.list->items[i],
+                                          b.data.list->items[i])) {
+                        return false;
+                    }
                 }
-            }
-            return true;
-        case JOY_QUOTATION:
-            if (a.data.quotation->length != b.data.quotation->length) return false;
-            for (size_t i = 0; i < a.data.quotation->length; i++) {
-                if (!joy_equal_values(a.data.quotation->terms[i],
-                                      b.data.quotation->terms[i])) {
-                    return false;
+                return true;
+            case JOY_QUOTATION:
+                if (a.data.quotation->length != b.data.quotation->length) return false;
+                for (size_t i = 0; i < a.data.quotation->length; i++) {
+                    if (!joy_equal_values(a.data.quotation->terms[i],
+                                          b.data.quotation->terms[i])) {
+                        return false;
+                    }
                 }
-            }
-            return true;
-        default:
-            return false;
+                return true;
+            default:
+                return false;
+        }
     }
+
+    /* LIST and QUOTATION can be compared by content */
+    if ((a.type == JOY_LIST && b.type == JOY_QUOTATION) ||
+        (a.type == JOY_QUOTATION && b.type == JOY_LIST)) {
+        size_t len_a = joy_aggregate_length(a);
+        size_t len_b = joy_aggregate_length(b);
+        if (len_a != len_b) return false;
+        for (size_t i = 0; i < len_a; i++) {
+            if (!joy_equal_values(joy_aggregate_item(a, i),
+                                  joy_aggregate_item(b, i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /* Numeric types can be compared across int/float */
+    if ((a.type == JOY_INTEGER || a.type == JOY_FLOAT) &&
+        (b.type == JOY_INTEGER || b.type == JOY_FLOAT)) {
+        double val_a = (a.type == JOY_INTEGER) ? (double)a.data.integer : a.data.floating;
+        double val_b = (b.type == JOY_INTEGER) ? (double)b.data.integer : b.data.floating;
+        return val_a == val_b;
+    }
+
+    return false;
 }
 
 static void prim_equal(JoyContext* ctx) {
@@ -4404,7 +4454,7 @@ void joy_register_primitives(JoyContext* ctx) {
     joy_dict_define_primitive(d, "put", prim_put);
     joy_dict_define_primitive(d, "putch", prim_putch);
     joy_dict_define_primitive(d, "putchars", prim_putchars);
-    joy_dict_define_primitive(d, ".", prim_newline);
+    joy_dict_define_primitive(d, ".", prim_dot);
     joy_dict_define_primitive(d, "newline", prim_newline);
     joy_dict_define_primitive(d, "putln", prim_putln);
 

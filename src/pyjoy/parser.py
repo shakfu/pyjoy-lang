@@ -366,10 +366,15 @@ class Parser:
             # Return as symbol string (late binding - resolved at runtime)
             return name
 
-        elif token.type in ("SEMICOLON", "PERIOD"):
-            # Statement terminators - skip
+        elif token.type == "SEMICOLON":
+            # Statement separator - skip
             self._advance()
             return _SKIP
+
+        elif token.type == "PERIOD":
+            # Period is the print operator (.) in executable code
+            self._advance()
+            return "."
 
         elif token.type == "DEF_OP":
             # == should only appear in definition context, skip if stray

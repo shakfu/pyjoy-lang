@@ -35,7 +35,12 @@ class Scanner:
         ("FLOAT", r"-?\d+\.\d+(?:[eE][+-]?\d+)?"),  # 3.14, -2.5e10
         ("INTEGER", r"-?\d+"),  # 42, -17
         ("STRING", r'"(?:[^"\\]|\\.)*"'),  # "hello"
-        ("CHAR", r"'(?:[^'\\]|\\.)'|'(?:[^'\s\\]|\\.)"),  # 'x' or 'x (Joy-style)
+        # Character literal: 'x' or 'x (Joy-style) with escape sequences
+        # including octal \nnn
+        (
+            "CHAR",
+            r"'(?:[^'\\]|\\[0-7]{1,3}|\\.)(?:'|(?=\s|$))|'(?:[^'\s\\]|\\[0-7]{1,3}|\\.)",
+        ),
         ("LBRACKET", r"\["),  # [
         ("RBRACKET", r"\]"),  # ]
         ("LBRACE", r"\{"),  # {
@@ -53,7 +58,10 @@ class Scanner:
         ("MODULE_KW", r"\bMODULE\b"),  # MODULE keyword
         # Word: identifier or operator symbols
         # Also allow -name pattern for symbols like -inf
-        ("SYMBOL", r"[a-zA-Z_][a-zA-Z0-9_\-]*|-[a-zA-Z_][a-zA-Z0-9_\-]*|[+\-*/<=>&|!?@#$%^~:]+"), # noqa: E501
+        (
+            "SYMBOL",
+            r"[a-zA-Z_][a-zA-Z0-9_\-]*|-[a-zA-Z_][a-zA-Z0-9_\-]*|[+\-*/<=>&|!?@#$%^~:]+",
+        ),  # noqa: E501
         ("WHITESPACE", r"\s+"),  # whitespace
     ]
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from ...parser import Definition
 from ...types import JoyQuotation, JoyType, JoyValue
 
 
@@ -219,6 +220,9 @@ class JoyToCConverter:
         c_quot = CQuotation(name=name)
 
         for term in quotation.terms:
+            # Skip Definition objects - they're handled separately
+            if isinstance(term, Definition):
+                continue
             c_value = self._convert_value(term)
             c_quot.add_term(c_value)
 
@@ -289,12 +293,14 @@ class JoyToCConverter:
         Returns:
             CProgram ready for C emission
         """
-        from ...parser import Parser
+        from ...parser import Definition, Parser
 
         parser = Parser()
         result = parser.parse_full(source)
 
-        # Convert definitions list to dictionary
-        definitions = {d.name: d.body for d in result.definitions}
+        # Extract definitions from program terms (they're now inlined)
+        definitions = {
+            t.name: t.body for t in result.program.terms if isinstance(t, Definition)
+        }
 
         return self.convert(result.program, definitions)

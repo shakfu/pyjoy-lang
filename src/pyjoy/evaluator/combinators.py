@@ -336,6 +336,11 @@ def cond(ctx: ExecutionContext) -> None:
                 ctx.evaluator.execute(term)
             elif isinstance(term, JoyValue) and term.type == JoyType.QUOTATION:
                 ctx.evaluator.execute(term.value)
+            elif isinstance(term, JoyValue):
+                # Literal value - push it
+                ctx.stack.push_value(term)
+            elif isinstance(term, str):
+                ctx.evaluator._execute_symbol(term)
             return
 
         condition = clause_terms[0]
@@ -360,6 +365,9 @@ def cond(ctx: ExecutionContext) -> None:
                     ctx.evaluator.execute(body)
                 elif isinstance(body, JoyValue) and body.type == JoyType.QUOTATION:
                     ctx.evaluator.execute(body.value)
+                elif isinstance(body, JoyValue):
+                    # Literal value - push it
+                    ctx.stack.push_value(body)
                 elif isinstance(body, str):
                     ctx.evaluator._execute_symbol(body)
             return

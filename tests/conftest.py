@@ -24,3 +24,9 @@ def ctx():
 def evaluator():
     """Fresh evaluator with context."""
     return Evaluator()
+
+
+@pytest.fixture
+def evaluator_with_stdlib():
+    """Fresh evaluator with stdlib loaded."""
+    return Evaluator(load_stdlib=True)

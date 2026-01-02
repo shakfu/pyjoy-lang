@@ -263,21 +263,27 @@ def compile_joy_to_c(
     from .emitter import CEmitter
     from .preprocessor import preprocess_includes
 
+    from ...parser import Definition
+
     # Parse and preprocess (expands includes)
     if source_path:
-        result = preprocess_includes(source, source_path=source_path)
+        parse_result = preprocess_includes(source, source_path=source_path)
     else:
         from ...parser import Parser
 
         parser = Parser()
-        result = parser.parse_full(source)
+        parse_result = parser.parse_full(source)
 
-    # Convert definitions list to dictionary
-    definitions = {d.name: d.body for d in result.definitions}
+    # Extract definitions from program terms (they're now inlined)
+    definitions = {
+        t.name: t.body
+        for t in parse_result.program.terms
+        if isinstance(t, Definition)
+    }
 
     # Convert to C representation
     converter = JoyToCConverter()
-    c_program = converter.convert(result.program, definitions)
+    c_program = converter.convert(parse_result.program, definitions)
 
     # Emit C code
     emitter = CEmitter()

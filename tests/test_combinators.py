@@ -326,3 +326,161 @@ class TestComplexCombinatorExpressions:
         assert evaluator.stack.peek(0).value == 3
         assert evaluator.stack.peek(1).value == 12
         assert evaluator.stack.peek(2).value == 1
+
+
+class TestCondCombinator:
+    """Tests for cond combinator - matching cond.joy test file."""
+
+    def test_cond_first_match(self, evaluator):
+        """cond selects first matching clause."""
+        evaluator.run("""
+            DEFINE test == [[[dup 1 =] "one"]
+                            [[dup 2 =] "two"]
+                            ["other"]] cond.
+            1 test
+        """)
+        # Stack should be: 1, "one"
+        assert evaluator.stack.depth == 2
+        assert evaluator.stack.peek(0).value == "one"
+        assert evaluator.stack.peek(1).value == 1
+
+    def test_cond_second_match(self, evaluator):
+        """cond selects second clause when first doesn't match."""
+        evaluator.run("""
+            DEFINE test == [[[dup 1 =] "one"]
+                            [[dup 2 =] "two"]
+                            ["other"]] cond.
+            2 test
+        """)
+        assert evaluator.stack.depth == 2
+        assert evaluator.stack.peek(0).value == "two"
+        assert evaluator.stack.peek(1).value == 2
+
+    def test_cond_default(self, evaluator):
+        """cond uses default clause when no condition matches."""
+        evaluator.run("""
+            DEFINE test == [[[dup 1 =] "one"]
+                            [[dup 2 =] "two"]
+                            ["other"]] cond.
+            3 test
+        """)
+        assert evaluator.stack.depth == 2
+        assert evaluator.stack.peek(0).value == "other"
+        assert evaluator.stack.peek(1).value == 3
+
+    def test_cond_stack_equal(self, evaluator):
+        """cond result matches expected with equal."""
+        evaluator.run("""
+            DEFINE test == [[[dup 1 =] "one"]
+                            [[dup 2 =] "two"]
+                            ["other"]] cond.
+            1 test stack ["one" 1] equal
+        """)
+        assert evaluator.stack.peek().value is True
+
+    def test_cond_single_default(self, evaluator):
+        """cond with only default clause."""
+        evaluator.run("""
+            DEFINE test == [["other"]] cond.
+            1 test
+        """)
+        assert evaluator.stack.peek().value == "other"
+
+    def test_cond_empty_clause(self, evaluator):
+        """cond with empty clause does nothing."""
+        evaluator.run("""
+            DEFINE test == [[]] cond.
+            1 test
+        """)
+        assert evaluator.stack.peek().value == 1
+
+
+class TestCondWithStdlib:
+    """Tests for cond with stdlib loaded - matches cond.joy file."""
+
+    def test_cond_file_exact(self, evaluator_with_stdlib):
+        """Test exact content from cond.joy file."""
+        # This matches the exact structure in cond.joy
+        evaluator_with_stdlib.run("""
+DEFINE\ttest == [[[dup 1 =] "one"]
+\t\t [[dup 2 =] "two"]
+\t\t ["other"]] cond.
+
+1 test stack ["one" 1] equal
+        """)
+        assert evaluator_with_stdlib.stack.peek().value is True
+
+    def test_cond_with_unstack(self, evaluator_with_stdlib):
+        """Test cond followed by unstack and more tests."""
+        evaluator_with_stdlib.run("""
+DEFINE\ttest == [[[dup 1 =] "one"]
+\t\t [[dup 2 =] "two"]
+\t\t ["other"]] cond.
+
+1 test stack ["one" 1] equal
+        """)
+        first_result = evaluator_with_stdlib.stack.pop().value
+
+        evaluator_with_stdlib.run("[] unstack")
+        evaluator_with_stdlib.run('2 test stack ["two" 2] equal')
+        second_result = evaluator_with_stdlib.stack.pop().value
+
+        evaluator_with_stdlib.run("[] unstack")
+        evaluator_with_stdlib.run('3 test stack ["other" 3] equal')
+        third_result = evaluator_with_stdlib.stack.pop().value
+
+        assert first_result is True
+        assert second_result is True
+        assert third_result is True
+
+    def test_cond_full_file(self, evaluator_with_stdlib):
+        """Test the exact full cond.joy file content."""
+        import io
+        import sys
+        from pathlib import Path
+
+        # Read the actual file
+        filepath = Path("tests/joy/cond.joy")
+        source = filepath.read_text()
+
+        # Capture stdout
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+
+        evaluator_with_stdlib.run(source)
+
+        output = sys.stdout.getvalue()
+        sys.stdout = old_stdout
+
+        # Check output - should be all "true"
+        lines = [l.strip() for l in output.strip().split("\n") if l.strip()]
+        assert all(l == "true" for l in lines), f"Expected all true, got: {lines}"
+
+    def test_cond_with_inline_redefine(self, evaluator_with_stdlib):
+        """Test that definitions are processed inline, not all upfront.
+
+        This is a regression test for the bug where all DEFINEs were registered
+        before any code executed, causing the last DEFINE to be active throughout.
+        """
+        import io
+        import sys
+
+        source = '''DEFINE test == [[[dup 1 =] "one"]
+         [[dup 2 =] "two"]
+         ["other"]] cond.
+
+1 test stack ["one" 1] equal.
+[] unstack.
+
+DEFINE test == [["other"]] cond.
+
+1 test "other" =.
+'''
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+        evaluator_with_stdlib.run(source)
+        output = sys.stdout.getvalue()
+        sys.stdout = old_stdout
+
+        lines = [l.strip() for l in output.strip().split("\n") if l.strip()]
+        assert lines == ["true", "true"], f"Expected ['true', 'true'], got: {lines}"

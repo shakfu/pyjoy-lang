@@ -13,7 +13,7 @@ from functools import wraps
 from typing import Any, Callable, Dict, Optional
 
 from pyjoy.errors import JoyStackUnderflow, JoyTypeError, JoyUndefinedWord
-from pyjoy.parser import Parser
+from pyjoy.parser import Definition, Parser
 from pyjoy.stack import ExecutionContext
 from pyjoy.types import JoyQuotation, JoyType, JoyValue
 
@@ -117,7 +117,7 @@ class Evaluator:
         Parse and execute Joy source code.
 
         Handles both definitions and executable code.
-        Definitions are registered before program execution.
+        Definitions are processed inline as they're encountered during execution.
 
         Args:
             source: Joy source code string
@@ -125,11 +125,7 @@ class Evaluator:
         parser = Parser()
         result = parser.parse_full(source)
 
-        # Register all definitions
-        for defn in result.definitions:
-            self.define(defn.name, defn.body)
-
-        # Execute the program
+        # Execute the program (definitions are inlined and processed as encountered)
         self.execute(result.program)
 
     def _execute_term(self, term: Any) -> None:
@@ -137,9 +133,13 @@ class Evaluator:
         Execute a single term.
 
         Args:
-            term: Can be JoyValue, JoyQuotation, or string (symbol)
+            term: Can be JoyValue, JoyQuotation, Definition, or string (symbol)
         """
-        if isinstance(term, JoyValue):
+        if isinstance(term, Definition):
+            # Register the definition (inline processing)
+            self.define(term.name, term.body)
+
+        elif isinstance(term, JoyValue):
             # Symbol values should be executed, not pushed
             if term.type == JoyType.SYMBOL:
                 self._execute_symbol(term.value)
@@ -238,8 +238,7 @@ class Evaluator:
                         source = f.read()
                     parser = Parser()
                     result = parser.parse_full(source)
-                    for defn in result.definitions:
-                        self.define(defn.name, defn.body)
+                    # Execute the program (definitions are inlined and processed as encountered)
                     self.execute(result.program)
         finally:
             sys.stdout = old_stdout

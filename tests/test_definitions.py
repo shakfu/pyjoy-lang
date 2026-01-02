@@ -2,8 +2,18 @@
 Tests for Phase 6 definitions and module system.
 """
 
-from pyjoy.parser import Parser
+from pyjoy.parser import Definition, Parser
 from pyjoy.types import JoyType
+
+
+def get_definitions(result):
+    """Extract Definition objects from parsed program (now inlined)."""
+    return [t for t in result.program.terms if isinstance(t, Definition)]
+
+
+def get_non_definitions(result):
+    """Extract non-Definition terms from parsed program."""
+    return [t for t in result.program.terms if not isinstance(t, Definition)]
 
 
 class TestDefinitionParsing:
@@ -13,47 +23,54 @@ class TestDefinitionParsing:
         """DEFINE name == body . parses correctly."""
         parser = Parser()
         result = parser.parse_full("DEFINE square == dup * .")
-        assert len(result.definitions) == 1
-        assert result.definitions[0].name == "square"
-        assert len(result.definitions[0].body.terms) == 2
+        defs = get_definitions(result)
+        assert len(defs) == 1
+        assert defs[0].name == "square"
+        assert len(defs[0].body.terms) == 2
 
     def test_parse_multiple_definitions(self):
         """DEFINE name1 == body1; name2 == body2 . parses correctly."""
         parser = Parser()
         result = parser.parse_full("DEFINE square == dup *; cube == dup dup * * .")
-        assert len(result.definitions) == 2
-        assert result.definitions[0].name == "square"
-        assert result.definitions[1].name == "cube"
+        defs = get_definitions(result)
+        assert len(defs) == 2
+        assert defs[0].name == "square"
+        assert defs[1].name == "cube"
 
     def test_parse_libra_keyword(self):
         """LIBRA is an alias for DEFINE."""
         parser = Parser()
         result = parser.parse_full("LIBRA double == 2 * .")
-        assert len(result.definitions) == 1
-        assert result.definitions[0].name == "double"
+        defs = get_definitions(result)
+        assert len(defs) == 1
+        assert defs[0].name == "double"
 
     def test_parse_definitions_with_program(self):
         """Definitions and program code both parse."""
         parser = Parser()
         result = parser.parse_full("DEFINE square == dup * . 5 square")
-        assert len(result.definitions) == 1
-        assert len(result.program.terms) == 2
+        defs = get_definitions(result)
+        non_defs = get_non_definitions(result)
+        assert len(defs) == 1
+        assert len(non_defs) == 2  # 5 and square
 
     def test_parse_empty_body(self):
         """Definition with empty body is valid."""
         parser = Parser()
         result = parser.parse_full("DEFINE nop == .")
-        assert len(result.definitions) == 1
-        assert result.definitions[0].name == "nop"
-        assert len(result.definitions[0].body.terms) == 0
+        defs = get_definitions(result)
+        assert len(defs) == 1
+        assert defs[0].name == "nop"
+        assert len(defs[0].body.terms) == 0
 
     def test_parse_definition_with_quotation(self):
         """Definition containing quotation parses correctly."""
         parser = Parser()
         result = parser.parse_full("DEFINE square-list == [dup *] map .")
-        assert len(result.definitions) == 1
+        defs = get_definitions(result)
+        assert len(defs) == 1
         # Body should have 2 terms: quotation and 'map'
-        assert len(result.definitions[0].body.terms) == 2
+        assert len(defs[0].body.terms) == 2
 
 
 class TestDefinitionExecution:
@@ -129,8 +146,9 @@ class TestDefinitionEdgeCases:
         """Definition without period should still parse (EOF terminates)."""
         parser = Parser()
         result = parser.parse_full("DEFINE foo == 42")
-        assert len(result.definitions) == 1
-        assert result.definitions[0].name == "foo"
+        defs = get_definitions(result)
+        assert len(defs) == 1
+        assert defs[0].name == "foo"
 
     def test_definition_with_literals(self, evaluator):
         """Definition can contain various literals."""

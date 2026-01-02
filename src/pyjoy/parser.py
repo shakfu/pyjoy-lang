@@ -64,37 +64,41 @@ class Parser:
         """
         Parse source code into definitions and program.
 
+        Definitions are inlined into the program at their original positions.
+        This ensures code executed before a definition uses the prior definition,
+        not the later one.
+
         Args:
             source: Joy source code
 
         Returns:
-            ParseResult with definitions and executable program
+            ParseResult with definitions inlined in program
         """
         scanner = Scanner()
         self._tokens = list(scanner.tokenize(source))
         self._pos = 0
 
-        definitions: List[Definition] = []
         terms: List[Any] = []
 
         while self._current() is not None:
             token = self._current()
 
-            # Check for DEFINE/LIBRA block
+            # Check for DEFINE/LIBRA block - inline definitions into program
             if token and token.type == "DEFINE_KW":
                 defs = self._parse_definition_block()
-                definitions.extend(defs)
+                terms.extend(defs)  # Inline Definition objects
             # Check for HIDE block
             elif token and token.type == "HIDE_KW":
                 defs = self._parse_hide_block()
-                definitions.extend(defs)
+                terms.extend(defs)  # Inline Definition objects
             else:
                 # Parse regular terms
                 term = self._parse_term()
                 if term is not _SKIP:
                     terms.append(term)
 
-        return ParseResult(definitions, JoyQuotation(tuple(terms)))
+        # definitions field kept empty for backwards compat - all defs are in program
+        return ParseResult([], JoyQuotation(tuple(terms)))
 
     def _current(self) -> Optional[Token]:
         """Get current token or None if at end."""

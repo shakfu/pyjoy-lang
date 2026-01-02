@@ -16,6 +16,17 @@ from pyjoy.backends.c.preprocessor import (
     IncludeError,
     preprocess_includes,
 )
+from pyjoy.parser import Definition
+
+
+def get_definitions(result):
+    """Extract Definition objects from parsed program (now inlined)."""
+    return [t for t in result.program.terms if isinstance(t, Definition)]
+
+
+def get_non_definitions(result):
+    """Extract non-Definition terms from parsed program."""
+    return [t for t in result.program.terms if not isinstance(t, Definition)]
 
 # Skip all tests if no C compiler is available
 pytestmark = pytest.mark.skipif(
@@ -516,7 +527,8 @@ class TestIncludePreprocessor:
         source = "1 2 +"
         result = preprocess_includes(source)
 
-        assert len(result.definitions) == 0
+        defs = get_definitions(result)
+        assert len(defs) == 0
         assert len(result.program.terms) == 3
 
     def test_preprocess_with_definitions(self):
@@ -524,8 +536,9 @@ class TestIncludePreprocessor:
         source = "DEFINE square == dup * . 5 square"
         result = preprocess_includes(source)
 
-        assert len(result.definitions) == 1
-        assert result.definitions[0].name == "square"
+        defs = get_definitions(result)
+        assert len(defs) == 1
+        assert defs[0].name == "square"
 
     def test_include_simple_file(self):
         """Include a simple Joy file."""
@@ -543,11 +556,13 @@ class TestIncludePreprocessor:
             result = preprocess_includes(main_source, source_path=main_file)
 
             # Should have the definition from the included file
-            assert len(result.definitions) == 1
-            assert result.definitions[0].name == "double"
+            defs = get_definitions(result)
+            assert len(defs) == 1
+            assert defs[0].name == "double"
 
-            # Include should be removed from program
-            assert len(result.program.terms) == 2  # 5 and double
+            # Include should be removed from program (only non-def terms)
+            non_defs = get_non_definitions(result)
+            assert len(non_defs) == 2  # 5 and double
 
     def test_include_with_local_definitions(self):
         """Include file combined with local definitions."""
@@ -567,8 +582,9 @@ DEFINE double == 2 * .
             result = preprocess_includes(main_source, source_path=main_file)
 
             # Should have both definitions
-            assert len(result.definitions) == 2
-            names = [d.name for d in result.definitions]
+            defs = get_definitions(result)
+            assert len(defs) == 2
+            names = [d.name for d in defs]
             assert "inc" in names
             assert "double" in names
 
@@ -592,8 +608,9 @@ DEFINE double == 2 * .
             result = preprocess_includes(main_source, source_path=main_file)
 
             # Should have both definitions from recursive includes
-            assert len(result.definitions) == 2
-            names = [d.name for d in result.definitions]
+            defs = get_definitions(result)
+            assert len(defs) == 2
+            names = [d.name for d in defs]
             assert "inc" in names
             assert "double" in names
 
@@ -616,7 +633,8 @@ DEFINE double == 2 * .
             result = preprocess_includes(main_source, source_path=main_file)
 
             # Should have definitions from both files
-            names = [d.name for d in result.definitions]
+            defs = get_definitions(result)
+            names = [d.name for d in defs]
             assert "from_a" in names
             assert "from_b" in names
 

@@ -434,9 +434,7 @@ def include_(ctx: ExecutionContext) -> None:
     parser = Parser()
     result = parser.parse_full(source)
 
-    for defn in result.definitions:
-        ctx.evaluator.define(defn.name, defn.body)
-
+    # Execute the program (definitions are inlined and processed as encountered)
     ctx.evaluator.execute(result.program)
 
 

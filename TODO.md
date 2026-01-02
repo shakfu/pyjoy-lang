@@ -2,10 +2,11 @@
 
 ## Current Test Results
 
-**Python Interpreter:** 170/215 tests passing (79.1%)
+**Python Interpreter:** 171/215 tests passing (79.5%)
 **C Backend:** 199/215 tests passing (92.6%)
+**pytest (unit tests):** 430/430 passing (100%)
 
-Note: Recent fixes include set operations for and/or/xor/not, type preservation in map/filter, stack operation fixes, and type system updates.
+Note: Recent fixes include inline definition processing (definitions now execute in order, not all upfront), set operations for and/or/xor/not, type preservation in map/filter, stack operation fixes, and type system updates.
 
 ---
 
@@ -46,6 +47,7 @@ These bugs were revealed when `.` started printing output:
 
 ## Recently Completed
 
+- [x] Inline definition processing - DEFINE/LIBRA blocks are now processed in order as code executes, not all upfront (fixes cond.joy and other tests that redefine words)
 - [x] `and`/`or`/`xor`/`not` - now handle SETs as set operations (intersection/union/symmetric diff/complement)
 - [x] `map`/`filter`/`split` - preserve STRING and SET types (was always returning LIST)
 - [x] `_make_aggregate` - convert integers to chars when reconstructing strings

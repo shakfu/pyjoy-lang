@@ -57,7 +57,7 @@ class IncludePreprocessor:
             source_path: Path to the source file (for resolving relative includes)
 
         Returns:
-            ParseResult with all includes expanded and merged
+            ParseResult with all includes expanded (definitions inlined in program)
         """
         # Determine base path for this source
         if source_path:
@@ -74,42 +74,33 @@ class IncludePreprocessor:
             parser = Parser()
             result = parser.parse_full(source)
 
-            # Collect all definitions (from includes first, then local)
-            all_definitions: List[Definition] = []
-
             # Process the program, expanding includes
-            new_terms, included_defs = self._process_terms(
+            # (definitions are now inlined in the program terms)
+            new_terms = self._process_terms_inline(
                 list(result.program.terms), current_base
             )
 
-            # Add definitions from includes
-            all_definitions.extend(included_defs)
-
-            # Add local definitions
-            all_definitions.extend(result.definitions)
-
             return ParseResult(
-                definitions=all_definitions,
+                definitions=[],  # Empty - all definitions are in program
                 program=JoyQuotation(tuple(new_terms)),
             )
         finally:
             self._include_stack.pop()
 
-    def _process_terms(
+    def _process_terms_inline(
         self, terms: List[Any], base_path: Path
-    ) -> tuple[List[Any], List[Definition]]:
+    ) -> List[Any]:
         """
-        Process a list of terms, expanding includes.
+        Process a list of terms, expanding includes and keeping definitions inline.
 
         Args:
             terms: List of Joy terms
             base_path: Base path for resolving relative includes
 
         Returns:
-            Tuple of (processed terms, collected definitions from includes)
+            Processed terms with includes expanded (definitions remain inline)
         """
         new_terms: List[Any] = []
-        collected_defs: List[Definition] = []
         i = 0
 
         while i < len(terms):
@@ -122,23 +113,23 @@ class IncludePreprocessor:
                     if self._is_string_value(next_term):
                         # Found include "filename" pattern
                         filename = self._get_string_value(next_term)
-                        include_defs = self._process_include(filename, base_path)
-                        collected_defs.extend(include_defs)
+                        include_terms = self._process_include_inline(
+                            filename, base_path
+                        )
+                        new_terms.extend(include_terms)
                         i += 2  # Skip both include and filename
                         continue
 
             # Process nested quotations
             if isinstance(term, JoyQuotation):
-                processed_terms, nested_defs = self._process_terms(
+                processed_terms = self._process_terms_inline(
                     list(term.terms), base_path
                 )
-                collected_defs.extend(nested_defs)
                 new_terms.append(JoyQuotation(tuple(processed_terms)))
             elif isinstance(term, JoyValue) and term.type == JoyType.QUOTATION:
-                processed_terms, nested_defs = self._process_terms(
+                processed_terms = self._process_terms_inline(
                     list(term.value.terms), base_path
                 )
-                collected_defs.extend(nested_defs)
                 new_terms.append(
                     JoyValue.quotation(JoyQuotation(tuple(processed_terms)))
                 )
@@ -147,7 +138,7 @@ class IncludePreprocessor:
 
             i += 1
 
-        return new_terms, collected_defs
+        return new_terms
 
     def _is_include_symbol(self, term: Any) -> bool:
         """Check if term is the 'include' symbol."""
@@ -164,6 +155,52 @@ class IncludePreprocessor:
     def _get_string_value(self, term: JoyValue) -> str:
         """Extract string value from JoyValue."""
         return term.value
+
+    def _process_include_inline(self, filename: str, base_path: Path) -> List[Any]:
+        """
+        Process an include directive, returning all terms inline.
+
+        Args:
+            filename: The filename to include
+            base_path: Base path for resolving relative paths
+
+        Returns:
+            List of all terms from the included file (definitions and program)
+        """
+        # Resolve the include path
+        include_path = (base_path / filename).resolve()
+
+        # Check for circular includes
+        if include_path in self._included_files:
+            # Already included - skip silently (not an error)
+            return []
+
+        # Check if file exists
+        if not include_path.exists():
+            stack_str = " -> ".join(str(p) for p in self._include_stack)
+            raise IncludeError(
+                f"Include file not found: {filename}\n"
+                f"  Resolved to: {include_path}\n"
+                f"  Include stack: {stack_str}",
+                include_path,
+            )
+
+        # Mark as included
+        self._included_files.add(include_path)
+        self._include_stack.append(include_path)
+
+        try:
+            # Read and parse the included file
+            source = include_path.read_text()
+            parser = Parser()
+            result = parser.parse_full(source)
+
+            # Recursively process includes in the included file
+            new_base = include_path.parent
+            return self._process_terms_inline(list(result.program.terms), new_base)
+
+        finally:
+            self._include_stack.pop()
 
     def _process_include(self, filename: str, base_path: Path) -> List[Definition]:
         """

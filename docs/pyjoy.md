@@ -11,7 +11,7 @@ Analysis and design document for reimplementing Joy in Python 3 with Python func
 3. **Interoperability**: Enable Joy programs to call Python and vice versa
 4. **Simplicity**: Leverage Python's features for cleaner implementation
 5. **Performance**: Acceptable performance for interactive use (not C-speed)
-6. **C code emitter**: Generate c code which could then be compiled into machine code
+6. **C code emitter**: Generate c code which can then be compiled into machine code
 
 ### 1.2 Non-Goals
 
@@ -82,18 +82,18 @@ result = evaluator.stack.peek()        # [1 4 9]
 
 ### 3.1 Joy to Python Type Mapping
 
-| Joy Type | Python Type | Notes |
-|----------|-------------|-------|
-| `INTEGER` | `int` | Python int is arbitrary precision; Joy is 64-bit |
-| `FLOAT` | `float` | IEEE 754 double precision |
-| `STRING` | `str` | UTF-8 strings |
-| `CHAR` | `str` (len 1) | Single character string |
-| `BOOLEAN` | `bool` | True/False |
-| `LIST` | `tuple` | Immutable for Joy semantics |
-| `SET` | `frozenset` | Immutable; members restricted to 0-63 |
-| `FILE` | `IO` | Python file object |
-| `QUOTATION` | `JoyQuotation` | Wrapper for unevaluated code |
-| `SYMBOL` | `str` | Symbol name for user definitions |
+| Joy Type      | Python Type   | Notes                                             |
+|---------------|---------------|---------------------------------------------------|
+| `INTEGER`     | `int`         | Python int is arbitrary precision; Joy is 64-bit  |
+| `FLOAT`       | `float`       | IEEE 754 double precision                         |
+| `STRING`      | `str`         | UTF-8 strings                                     |
+| `CHAR`        | `str` (len 1) | Single character string                           |
+| `BOOLEAN`     | `bool`        | True/False                                        |
+| `LIST`        | `tuple`       | Immutable for Joy semantics                       |
+| `SET`         | `frozenset`   | Immutable; members restricted to 0-63             |
+| `FILE`        | `IO`          | Python file object                                |
+| `QUOTATION`   | `JoyQuotation`| Wrapper for unevaluated code                      |
+| `SYMBOL`      | `str`         | Symbol name for user definitions                  |
 
 ### 3.2 Type Wrapper Classes
 

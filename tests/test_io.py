@@ -260,8 +260,9 @@ class TestFormatting:
         assert "10" in result.value
 
     def test_formatf(self, evaluator):
-        """formatf formats float with format string."""
-        evaluator.run('3.14159 "%.2f" formatf')
+        """formatf formats float with char, width, precision."""
+        # F C I J -> S: format 3.14159 with 'f', width 0, precision 2
+        evaluator.run("3.14159 'f 0 2 formatf")
         result = evaluator.stack.peek()
         assert result.type == JoyType.STRING
         assert result.value == "3.14"

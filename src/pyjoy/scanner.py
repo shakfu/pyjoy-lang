@@ -6,6 +6,7 @@ Tokenizes Joy source code into a stream of tokens.
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from typing import Any, Iterator
@@ -70,18 +71,25 @@ class Scanner:
         pattern = "|".join(f"(?P<{name}>{pat})" for name, pat in self.PATTERNS)
         self._regex = re.compile(pattern, re.DOTALL)
 
-    def tokenize(self, source: str) -> Iterator[Token]:
+    def tokenize(
+        self, source: str, execute_shell: bool = True
+    ) -> Iterator[Token]:
         """
         Generate tokens from source code.
 
         Args:
             source: Joy source code
+            execute_shell: If True, execute shell escape lines ($ at line start)
 
         Yields:
             Token objects
 
         Skips whitespace and comments.
+        Shell escape lines (starting with $) are executed and removed.
         """
+        # Pre-process shell escape lines
+        source = self._process_shell_escapes(source, execute_shell)
+
         line = 1
         line_start = 0
 
@@ -142,6 +150,37 @@ class Scanner:
         if c.startswith("\\"):
             return self._unescape_string(c)
         return c
+
+    def _process_shell_escapes(self, source: str, execute: bool) -> str:
+        """
+        Process shell escape lines (lines starting with $).
+
+        In Joy, a line starting with $ at column 0 executes the rest
+        of the line as a shell command and is not part of the program.
+
+        Args:
+            source: Joy source code
+            execute: If True, actually execute shell commands
+
+        Returns:
+            Source with shell escape lines removed
+        """
+        lines = source.split("\n")
+        result_lines = []
+
+        for line in lines:
+            if line.startswith("$"):
+                # Shell escape: execute the command (everything after $)
+                if execute:
+                    cmd = line[1:].strip()
+                    if cmd:
+                        os.system(cmd)
+                # Don't include this line in the output
+                result_lines.append("")  # Keep line count consistent
+            else:
+                result_lines.append(line)
+
+        return "\n".join(result_lines)
 
 
 # Convenience function for one-shot tokenization

@@ -1,8 +1,6 @@
 (*
-    module  : system2.joy
-    version : 1.5
-    date    : 07/15/24
+    module  : system.joy
+    version : 1.6
+    date    : 01/02/26
 *)
-"TECO" system.
-"ls" system.
-# "c:/Users/M/AppData/Local/Pandoc/ls" system.
+"true" system 0 =.

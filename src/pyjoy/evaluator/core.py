@@ -94,10 +94,12 @@ class Evaluator:
     - Program execution
     """
 
-    def __init__(self) -> None:
+    def __init__(self, load_stdlib: bool = False) -> None:
         self.ctx = ExecutionContext()
         self.ctx.set_evaluator(self)
         self.definitions: Dict[str, JoyQuotation] = {}
+        if load_stdlib:
+            self._load_stdlib()
 
     def execute(self, program: JoyQuotation) -> None:
         """
@@ -205,6 +207,33 @@ class Evaluator:
     def stack(self):
         """Convenience access to the stack."""
         return self.ctx.stack
+
+    def _load_stdlib(self) -> None:
+        """Load standard library definitions."""
+        import os
+        import sys
+        from io import StringIO
+
+        stdlib_path = os.path.join(os.path.dirname(__file__), "..", "stdlib")
+        # Load inilib first (defines libload, dup2, pop2, etc.), then agglib
+        libs = ["inilib.joy", "agglib.joy"]
+
+        # Suppress output during stdlib loading
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+        try:
+            for lib in libs:
+                lib_path = os.path.join(stdlib_path, lib)
+                if os.path.exists(lib_path):
+                    with open(lib_path, "r") as f:
+                        source = f.read()
+                    parser = Parser()
+                    result = parser.parse_full(source)
+                    for defn in result.definitions:
+                        self.define(defn.name, defn.body)
+                    self.execute(result.program)
+        finally:
+            sys.stdout = old_stdout
 
 
 # Helper function used by many primitives

@@ -1,4 +1,4 @@
-.PHONY: all sync repl build test coverage lint format typecheck clean compile-c run-c
+.PHONY: all sync repl build test test-joy coverage lint format typecheck clean compile-c run-c
 
 all: sync
 
@@ -13,6 +13,9 @@ build: sync
 
 test: sync
 	@uv run pytest
+
+test-joy: sync
+	@uv run python -m pyjoy test tests/joy; status=$$?; rm -f test dummy; exit $$status
 
 coverage: sync
 	@uv run pytest --cov=src/pyjoy --cov-report=term-missing

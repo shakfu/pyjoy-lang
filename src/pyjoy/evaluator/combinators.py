@@ -359,6 +359,62 @@ def cond(ctx: ExecutionContext) -> None:
     ctx.stack._items = saved
 
 
+@joy_word(name="case", params=2, doc="X [[V1 B1] [V2 B2] ... [D]] -> ...")
+def case(ctx: ExecutionContext) -> None:
+    """Case dispatch based on value of X.
+
+    Each clause is [value body]. If X equals value, execute body.
+    Last clause can be [body] as default case.
+    """
+    cases, x = ctx.stack.pop_n(2)
+    case_list = _get_aggregate(cases, "case")
+
+    for case_clause in case_list:
+        # Handle both JoyValue(QUOTATION) and raw JoyQuotation
+        if isinstance(case_clause, JoyValue) and case_clause.type == JoyType.QUOTATION:
+            case_terms = case_clause.value.terms
+        elif isinstance(case_clause, JoyQuotation):
+            case_terms = case_clause.terms
+        else:
+            continue
+
+        if len(case_terms) < 1:
+            continue
+
+        # Default case (single element)
+        if len(case_terms) == 1:
+            body = case_terms[0]
+            ctx.stack.push_value(x)
+            if isinstance(body, JoyValue) and body.type == JoyType.QUOTATION:
+                ctx.evaluator.execute(body.value)
+            elif isinstance(body, JoyQuotation):
+                ctx.evaluator.execute(body)
+            elif isinstance(body, str):
+                ctx.evaluator._execute_symbol(body)
+            return
+
+        # [value body] clause
+        value = case_terms[0]
+        body = case_terms[1:]  # Rest is the body
+
+        # Compare x with value
+        match = False
+        if isinstance(value, JoyValue):
+            if x.type == value.type and x.value == value.value:
+                match = True
+            elif x.is_numeric() and value.is_numeric():
+                match = x.value == value.value
+        elif isinstance(value, (int, float)):
+            if x.is_numeric():
+                match = x.value == value
+
+        if match:
+            ctx.stack.push_value(x)
+            # Execute body as a quotation
+            ctx.evaluator.execute(JoyQuotation(tuple(body)))
+            return
+
+
 @joy_word(name="opcase", params=2, doc="X [[P1 Q1] [P2 Q2] ...] -> ...")
 def opcase(ctx: ExecutionContext) -> None:
     """Case dispatch based on type of X."""

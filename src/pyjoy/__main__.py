@@ -294,7 +294,7 @@ def run_single_test(
     except Exception as e:
         return "error", f"Read error: {e}"
 
-    evaluator = Evaluator()
+    evaluator = Evaluator(load_stdlib=True)
     stdout_capture = io.StringIO()
     stderr_capture = io.StringIO()
 

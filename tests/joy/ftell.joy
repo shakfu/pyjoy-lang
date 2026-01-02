@@ -3,4 +3,4 @@
     version : 1.6
     date    : 03/21/24
 *)
-"ftell.joy" "r" fopen 0 2 fseek swap ftell 121 =.
+"tests/joy/ftell.joy" "r" fopen 0 2 fseek swap ftell 131 =.

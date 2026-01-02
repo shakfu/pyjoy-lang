@@ -152,7 +152,7 @@ class TestFileOperations:
             pos = evaluator.stack.pop()
             assert pos.value == 0
 
-            evaluator.run("5 0 fseek")  # Seek to position 5
+            evaluator.run("5 0 fseek pop")  # Seek to position 5, pop success bool
             evaluator.run("ftell")
             pos = evaluator.stack.pop()
             assert pos.value == 5
@@ -169,7 +169,7 @@ class TestFileOperations:
         try:
             evaluator.run(f'"{fname}" "w+" fopen')
             evaluator.run("65 fputch")  # Write 'A'
-            evaluator.run("0 0 fseek")  # Seek back to start
+            evaluator.run("0 0 fseek pop")  # Seek back to start, pop success bool
             evaluator.run("fgetch")
 
             result = evaluator.stack.pop()

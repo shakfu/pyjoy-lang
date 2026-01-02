@@ -2,7 +2,7 @@
 
 ## Current Test Results
 
-**Python Interpreter:** 178/215 tests passing (82.8%)
+**Python Interpreter:** 186/215 tests passing (86.5%)
 **C Backend:** 199/215 tests passing (92.6%)
 **pytest (unit tests):** 430/430 passing (100%)
 
@@ -29,12 +29,6 @@ These bugs were revealed when `.` started printing output:
 
 1. **Float/Set bit-level equality** - `3.14159 {bits} =` expects IEEE 754 bit comparison (2 tests in eql.joy)
 
-### File I/O Issues
-
-8 tests fail because files can't be opened:
-- `fclose.joy`, `feof.joy`, `ferror.joy`, `fgetch.joy`, `fgets.joy`, `fread.joy`, `fseek.joy`, `ftell.joy`
-- These may be path resolution issues or missing test fixture files
-
 ### Other Categories
 
 | Category | Count | Notes |
@@ -46,6 +40,7 @@ These bugs were revealed when `.` started printing output:
 
 ## Recently Completed
 
+- [x] File I/O path fixes - Updated test files to use full paths; fixed `fseek` to return `S B` (stream + boolean) (8 tests)
 - [x] `$` shell escape - Lines starting with `$` at column 0 execute rest of line as shell command (7 tests)
 - [x] Inline definition processing - DEFINE/LIBRA blocks are now processed in order as code executes, not all upfront (fixes cond.joy and other tests that redefine words)
 - [x] `and`/`or`/`xor`/`not` - now handle SETs as set operations (intersection/union/symmetric diff/complement)

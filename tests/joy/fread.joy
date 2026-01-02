@@ -3,4 +3,4 @@
     version : 1.4
     date    : 03/21/24
 *)
-"fread.joy" "r" fopen 10 fread [40 42 10 32 32 32 32 109 111 100] equal.
+"tests/joy/fread.joy" "r" fopen 10 fread [40 42 10 32 32 32 32 109 111 100] equal.

@@ -262,18 +262,24 @@ def ftell(ctx: ExecutionContext) -> None:
     ctx.stack.push_value(JoyValue.integer(pos))
 
 
-@joy_word(name="fseek", params=3, doc="S I W -> S")
+@joy_word(name="fseek", params=3, doc="S P W -> S B")
 def fseek(ctx: ExecutionContext) -> None:
-    """Seek to position I in stream S with whence W."""
-    whence, pos, stream = ctx.stack.pop_n(3)
+    """Seek to position P in stream S with whence W. Push success boolean."""
+    whence, pos = ctx.stack.pop_n(2)
+    stream = ctx.stack.peek()  # Stream stays on stack
     f = _expect_file(stream, "fseek")
     if pos.type != JoyType.INTEGER:
         raise JoyTypeError("fseek", "integer (position)", pos.type.name)
     if whence.type != JoyType.INTEGER:
         raise JoyTypeError("fseek", "integer (whence)", whence.type.name)
 
-    f.seek(pos.value, whence.value)
-    ctx.stack.push_value(stream)
+    try:
+        f.seek(pos.value, whence.value)
+        # C fseek returns 0 on success, non-zero on failure
+        # !!fseek means: success -> false, failure -> true
+        ctx.stack.push_value(JoyValue.boolean(False))  # Success
+    except (OSError, IOError):
+        ctx.stack.push_value(JoyValue.boolean(True))  # Error occurred
 
 
 @joy_word(name="fputch", params=2, doc="S C -> S")

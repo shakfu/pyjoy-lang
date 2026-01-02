@@ -2378,3 +2378,88 @@ def rolldownd_(ctx: ExecutionContext) -> None:
     ctx.stack.push_value(x)
     ctx.stack.push_value(y)
     ctx.stack.push_value(w)
+
+
+# -----------------------------------------------------------------------------
+# Help Commands
+# -----------------------------------------------------------------------------
+
+
+@joy_word(name="help", params=0, doc="->")
+def help_(ctx: ExecutionContext) -> None:
+    """List all defined symbols and primitives."""
+    from pyjoy.primitives import PRIMITIVES
+
+    # Print user definitions
+    if ctx.evaluator.definitions:
+        print("User definitions:")
+        for name in sorted(ctx.evaluator.definitions.keys()):
+            print(f"  {name}")
+        print()
+
+    # Print primitives by section
+    print("Primitives:")
+    for name in sorted(PRIMITIVES.keys()):
+        print(f"  {name}")
+
+
+@joy_word(name="helpdetail", params=1, doc="[S1 S2 ..] ->")
+def helpdetail_(ctx: ExecutionContext) -> None:
+    """Give brief help on each symbol in the list."""
+    from pyjoy.primitives import PRIMITIVES
+
+    symbols = ctx.stack.pop()
+    if symbols.type not in (JoyType.LIST, JoyType.QUOTATION):
+        raise JoyTypeError("helpdetail", "LIST or QUOTATION", symbols.type.name)
+
+    items = symbols.value if symbols.type == JoyType.LIST else symbols.value.terms
+
+    for item in items:
+        # Get symbol name
+        if isinstance(item, JoyValue):
+            if item.type == JoyType.SYMBOL:
+                name = item.value
+            elif item.type == JoyType.STRING:
+                name = item.value
+            else:
+                continue
+        elif isinstance(item, str):
+            name = item
+        else:
+            continue
+
+        # Look up in primitives
+        if name in PRIMITIVES:
+            prim = PRIMITIVES[name]
+            sig = prim.get("signature", "")
+            desc = prim.get("description", "")
+            print(f"{name} : {sig}")
+            print(f"    {desc}")
+        elif name in ctx.evaluator.definitions:
+            print(f"{name} : (user-defined)")
+        else:
+            print(f"{name} : (undefined)")
+
+
+@joy_word(name="manual", params=0, doc="->")
+def manual_(ctx: ExecutionContext) -> None:
+    """Print the manual of all Joy primitives."""
+    from pyjoy.primitives import PRIMITIVES, SECTIONS
+
+    for section in SECTIONS:
+        prims_in_section = SECTIONS.get(section, [])
+        if not prims_in_section:
+            continue
+
+        print(f"\n{'=' * 60}")
+        print(f"  {section.upper()}")
+        print(f"{'=' * 60}\n")
+
+        for name in prims_in_section:
+            if name in PRIMITIVES:
+                prim = PRIMITIVES[name]
+                sig = prim.get("signature", "")
+                desc = prim.get("description", "")
+                print(f"{name} : {sig}")
+                print(f"    {desc}")
+                print()

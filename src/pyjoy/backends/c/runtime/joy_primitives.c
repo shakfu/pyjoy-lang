@@ -3571,7 +3571,7 @@ static void prim_formatf(JoyContext* ctx) {
     EXPECT_TYPE(i, JOY_INTEGER, "formatf");
     EXPECT_TYPE(c, JOY_CHAR, "formatf");
 
-    double val;
+    double val = 0.0;
     if (f.type == JOY_FLOAT) {
         val = f.data.floating;
     } else if (f.type == JOY_INTEGER) {
@@ -4264,6 +4264,34 @@ static void prim_undefs(JoyContext* ctx) {
     PUSH(empty);
 }
 
+static void prim_help(JoyContext* ctx) {
+    /* -> : list defined symbols and primitives */
+    (void)ctx;
+    printf("Joy - compiled program\n");
+    printf("Use 'manual' for full documentation.\n");
+    printf("Help system has limited functionality in compiled code.\n");
+}
+
+static void prim_helpdetail(JoyContext* ctx) {
+    /* [S1 S2 ..] -> : give brief help on symbols */
+    REQUIRE(1, "helpdetail");
+    JoyValue symbols = POP();
+    printf("helpdetail: limited functionality in compiled code\n");
+    joy_value_free(&symbols);
+}
+
+static void prim_manual(JoyContext* ctx) {
+    /* -> : print manual of all primitives */
+    (void)ctx;
+    printf("Joy Language Manual\n");
+    printf("===================\n\n");
+    printf("This is a compiled Joy program.\n");
+    printf("For full documentation, see the Joy language specification.\n");
+    printf("\nCore primitives: dup pop swap + - * / < > = etc.\n");
+    printf("Combinators: i x dip map fold linrec primrec etc.\n");
+    printf("Aggregates: first rest cons size null etc.\n");
+}
+
 /* ---------- Registration ---------- */
 
 void joy_register_primitives(JoyContext* ctx) {
@@ -4514,6 +4542,9 @@ void joy_register_primitives(JoyContext* ctx) {
     joy_dict_define_primitive(d, "echo", prim_echo);
     joy_dict_define_primitive(d, "conts", prim_conts);
     joy_dict_define_primitive(d, "undefs", prim_undefs);
+    joy_dict_define_primitive(d, "help", prim_help);
+    joy_dict_define_primitive(d, "helpdetail", prim_helpdetail);
+    joy_dict_define_primitive(d, "manual", prim_manual);
 
     /* File I/O */
     joy_dict_define_primitive(d, "fopen", prim_fopen);

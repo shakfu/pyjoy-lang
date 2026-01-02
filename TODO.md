@@ -2,7 +2,7 @@
 
 ## Primitives Coverage
 
-**Current: 198/203 (97%)** + 8 extensions
+**Current: 201/203 (99%)** + 8 extensions
 
 Run `uv run python scripts/check_c_coverage.py` for full report.
 
@@ -17,15 +17,12 @@ Run `uv run python scripts/check_c_coverage.py` for full report.
 
 ---
 
-## Remaining Primitives (5)
+## Remaining Primitives (2)
 
-### Miscellaneous Commands (5)
+### Miscellaneous Commands (2)
 
 | Primitive | Signature | Description |
 |-----------|-----------|-------------|
-| `help` | `->` | Display help |
-| `helpdetail` | `[S1 S2 ..] ->` | Display detailed help for symbols |
-| `manual` | `->` | Display full manual |
 | `get` | `-> F` | Read factor from input |
 | `include` | `"filnam.ext" ->` | Include Joy source file |
 
@@ -57,6 +54,8 @@ This would allow Joy programs using `include` to compile correctly.
 - [x] System interaction: `system`, `getenv`, `argc`, `argv`
 - [x] File I/O: `fopen`, `fclose`, `fflush`, `feof`, `ferror`, `fgetch`, `fgets`, `fread`, `fput`, `fputch`, `fputchars`, `fputstring`, `fwrite`, `fseek`, `ftell`, `fremove`, `frename`
 - [x] Application combinators: `app1`, `app11`, `app12`, `app2`, `app3`, `app4`
+- [x] Interpreter control: `abort`, `quit`, `gc`, `setautoput`, `setundeferror`, `autoput`, `undeferror`, `echo`, `conts`, `undefs`
+- [x] Help system: `help`, `helpdetail`, `manual`
 
 ---
 
@@ -80,9 +79,9 @@ This would allow Joy programs using `include` to compile correctly.
 - [x] ~~Predicate (`user`)~~
 
 ### Low (interpreter-specific)
-- [ ] `help`, `helpdetail`, `manual`
-- [ ] `conts`, `autoput`, `undeferror`, `echo`
-- [ ] `gc`, `abort`, `quit`
+- [x] ~~`help`, `helpdetail`, `manual`~~
+- [x] ~~`conts`, `autoput`, `undeferror`, `echo`~~
+- [x] ~~`gc`, `abort`, `quit`~~
 
 ---
 

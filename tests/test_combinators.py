@@ -453,8 +453,8 @@ DEFINE\ttest == [[[dup 1 =] "one"]
         sys.stdout = old_stdout
 
         # Check output - should be all "true"
-        lines = [l.strip() for l in output.strip().split("\n") if l.strip()]
-        assert all(l == "true" for l in lines), f"Expected all true, got: {lines}"
+        lines = [ln.strip() for ln in output.strip().split("\n") if ln.strip()]
+        assert all(ln == "true" for ln in lines), f"Expected all true, got: {lines}"
 
     def test_cond_with_inline_redefine(self, evaluator_with_stdlib):
         """Test that definitions are processed inline, not all upfront.
@@ -482,5 +482,5 @@ DEFINE test == [["other"]] cond.
         output = sys.stdout.getvalue()
         sys.stdout = old_stdout
 
-        lines = [l.strip() for l in output.strip().split("\n") if l.strip()]
+        lines = [ln.strip() for ln in output.strip().split("\n") if ln.strip()]
         assert lines == ["true", "true"], f"Expected ['true', 'true'], got: {lines}"

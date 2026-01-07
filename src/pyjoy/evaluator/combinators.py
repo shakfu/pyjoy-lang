@@ -379,13 +379,17 @@ def cond(ctx: ExecutionContext) -> None:
 def case(ctx: ExecutionContext) -> None:
     """Case dispatch based on value of X.
 
-    Each clause is [value body]. If X equals value, execute body.
-    Last clause can be [body] as default case.
+    Each clause is [value body...]. If X equals value, execute body (X is consumed).
+    Last clause is the default case (X is preserved, entire clause is body).
     """
     cases, x = ctx.stack.pop_n(2)
     case_list = _get_aggregate(cases, "case")
 
-    for case_clause in case_list:
+    if not case_list:
+        return
+
+    # Process all clauses except the last (which is default)
+    for i, case_clause in enumerate(case_list[:-1]):
         # Handle both JoyValue(QUOTATION) and raw JoyQuotation
         if isinstance(case_clause, JoyValue) and case_clause.type == JoyType.QUOTATION:
             case_terms = case_clause.value.terms
@@ -394,22 +398,10 @@ def case(ctx: ExecutionContext) -> None:
         else:
             continue
 
-        if len(case_terms) < 1:
+        if len(case_terms) < 2:
             continue
 
-        # Default case (single element)
-        if len(case_terms) == 1:
-            body = case_terms[0]
-            ctx.stack.push_value(x)
-            if isinstance(body, JoyValue) and body.type == JoyType.QUOTATION:
-                ctx.evaluator.execute(body.value)
-            elif isinstance(body, JoyQuotation):
-                ctx.evaluator.execute(body)
-            elif isinstance(body, str):
-                ctx.evaluator._execute_symbol(body)
-            return
-
-        # [value body] clause
+        # [value body...] clause
         value = case_terms[0]
         body = case_terms[1:]  # Rest is the body
 
@@ -425,10 +417,25 @@ def case(ctx: ExecutionContext) -> None:
                 match = x.value == value
 
         if match:
-            ctx.stack.push_value(x)
-            # Execute body as a quotation
+            # For matched cases, X is consumed (not pushed back)
             ctx.evaluator.execute(JoyQuotation(tuple(body)))
             return
+
+    # Default case (last clause) - X is preserved, execute entire clause as body
+    default_clause = case_list[-1]
+    is_joy_quot = (
+        isinstance(default_clause, JoyValue)
+        and default_clause.type == JoyType.QUOTATION
+    )
+    if is_joy_quot:
+        default_body = default_clause.value.terms
+    elif isinstance(default_clause, JoyQuotation):
+        default_body = default_clause.terms
+    else:
+        return
+
+    ctx.stack.push_value(x)
+    ctx.evaluator.execute(JoyQuotation(tuple(default_body)))
 
 
 @joy_word(name="opcase", params=2, doc="X [..[X Xs]..] -> [Xs]")
@@ -1016,27 +1023,40 @@ def primrec(ctx: ExecutionContext) -> None:
 
 @joy_word(name="linrec", params=4, doc="[P] [T] [R1] [R2] -> ...")
 def linrec(ctx: ExecutionContext) -> None:
-    """Linear recursion combinator."""
+    """Linear recursion combinator.
+
+    Iterative implementation to avoid Python stack overflow with deep recursion.
+    Equivalent to: [P] [T] [R1] [R2] linrec
+    If P then T else R1 [P] [T] [R1] [R2] linrec R2
+    """
     r2_quot, r1_quot, t_quot, p_quot = ctx.stack.pop_n(4)
     p = expect_quotation(p_quot, "linrec")
     t = expect_quotation(t_quot, "linrec")
     r1 = expect_quotation(r1_quot, "linrec")
     r2 = expect_quotation(r2_quot, "linrec")
 
-    def linrec_aux() -> None:
+    # Count how many times we need to execute R2 after the base case
+    depth = 0
+
+    while True:
+        # Test P (non-destructively)
         saved = ctx.stack._items.copy()
         ctx.evaluator.execute(p)
         test_result = ctx.stack.pop()
         ctx.stack._items = saved
 
         if test_result.is_truthy():
+            # Base case: execute T and exit loop
             ctx.evaluator.execute(t)
+            break
         else:
+            # Recursive case: execute R1 and continue
             ctx.evaluator.execute(r1)
-            linrec_aux()
-            ctx.evaluator.execute(r2)
+            depth += 1
 
-    linrec_aux()
+    # Execute R2 'depth' times (unwinding the recursion)
+    for _ in range(depth):
+        ctx.evaluator.execute(r2)
 
 
 @joy_word(name="binrec", params=4, doc="[P] [T] [R1] [R2] -> ...")

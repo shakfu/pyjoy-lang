@@ -36,6 +36,12 @@ def pop(ctx: ExecutionContext) -> None:
     ctx.stack.pop()
 
 
+@joy_word(name="id", params=0, doc="->")
+def id_(ctx: ExecutionContext) -> None:
+    """Identity function (no-op)."""
+    pass
+
+
 @joy_word(name="swap", params=2, doc="X Y -> Y X")
 def swap(ctx: ExecutionContext) -> None:
     """Exchange top two stack items."""

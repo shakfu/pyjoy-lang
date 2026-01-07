@@ -6,6 +6,7 @@ Contains: <, >, <=, >=, =, !=, equal, compare, and, or, not, xor
 
 from __future__ import annotations
 
+import struct
 from typing import Any
 
 from pyjoy.stack import ExecutionContext
@@ -14,7 +15,12 @@ from pyjoy.types import JoyQuotation, JoyType, JoyValue
 from .core import joy_word
 
 
-def _numeric_value(v: JoyValue) -> int | float:
+def _float_to_bits(f: float) -> int:
+    """Convert float to its IEEE 754 double-precision bit representation."""
+    return struct.unpack(">Q", struct.pack(">d", f))[0]
+
+
+def _numeric_value(v: JoyValue) -> int | float | None:
     """Extract numeric value for comparison.
 
     Joy treats many types as having numeric interpretations:
@@ -159,6 +165,7 @@ def _joy_equals(a: JoyValue, b: JoyValue) -> bool:
     - Strings compare by content
     - Symbols compare with their string names
     - Numeric types compare by value
+    - FLOAT vs SET: compares IEEE 754 bit representation
     """
     # Non-empty lists/quotations are never equal with =
     if a.type in (JoyType.LIST, JoyType.QUOTATION):
@@ -183,6 +190,17 @@ def _joy_equals(a: JoyValue, b: JoyValue) -> bool:
     # String comparison
     if a.type == JoyType.STRING and b.type == JoyType.STRING:
         return a.value == b.value
+
+    # FLOAT vs SET: compare IEEE 754 bit representation
+    # Joy treats sets as bit patterns; floats compare by their bit representation
+    if a.type == JoyType.FLOAT and b.type == JoyType.SET:
+        float_bits = _float_to_bits(a.value)
+        set_bits = sum(1 << n for n in b.value)
+        return float_bits == set_bits
+    if a.type == JoyType.SET and b.type == JoyType.FLOAT:
+        set_bits = sum(1 << n for n in a.value)
+        float_bits = _float_to_bits(b.value)
+        return set_bits == float_bits
 
     # Try numeric comparison (handles int, float, char, bool, set, empty list)
     av = _numeric_value(a)

@@ -540,8 +540,20 @@ def maxint_(ctx: ExecutionContext) -> None:
 
 @joy_word(name="setautoput", params=1, doc="I ->")
 def setautoput_(ctx: ExecutionContext) -> None:
-    """Set autoput mode (stub)."""
-    ctx.stack.pop()
+    """Set autoput mode."""
+    val = ctx.stack.pop()
+    if val.type != JoyType.INTEGER:
+        raise JoyTypeError("setautoput", "integer", val.type.name)
+    ctx.evaluator.autoput_mode = val.value
+
+
+@joy_word(name="setecho", params=1, doc="I ->")
+def setecho_(ctx: ExecutionContext) -> None:
+    """Set echo mode."""
+    val = ctx.stack.pop()
+    if val.type != JoyType.INTEGER:
+        raise JoyTypeError("setecho", "integer", val.type.name)
+    ctx.evaluator.echo_mode = val.value
 
 
 @joy_word(name="setundeferror", params=1, doc="I ->")
@@ -553,8 +565,8 @@ def setundeferror_(ctx: ExecutionContext) -> None:
 
 @joy_word(name="autoput", params=0, doc="-> I")
 def autoput_(ctx: ExecutionContext) -> None:
-    """Get autoput mode (stub, returns 0)."""
-    ctx.stack.push_value(JoyValue.integer(0))
+    """Get autoput mode."""
+    ctx.stack.push_value(JoyValue.integer(ctx.evaluator.autoput_mode))
 
 
 @joy_word(name="undeferror", params=0, doc="-> I")
@@ -565,8 +577,8 @@ def undeferror_(ctx: ExecutionContext) -> None:
 
 @joy_word(name="echo", params=0, doc="-> I")
 def echo_(ctx: ExecutionContext) -> None:
-    """Get echo mode (stub, returns 0)."""
-    ctx.stack.push_value(JoyValue.integer(0))
+    """Get echo mode."""
+    ctx.stack.push_value(JoyValue.integer(ctx.evaluator.echo_mode))
 
 
 @joy_word(name="conts", params=0, doc="-> L")
@@ -660,3 +672,32 @@ def manual_(ctx: ExecutionContext) -> None:
             if desc:
                 print(f"    {desc.split(chr(10))[0]}")
             print()
+
+
+# -----------------------------------------------------------------------------
+# Set Size and Memory Primitives
+# -----------------------------------------------------------------------------
+
+
+@joy_word(name="setsize", params=0, doc="-> I")
+def setsize_(ctx: ExecutionContext) -> None:
+    """Push the maximum set size (64 for integers 0-63)."""
+    ctx.stack.push_value(JoyValue.integer(64))
+
+
+@joy_word(name="__memoryindex", params=0, doc="-> I")
+def memoryindex_(ctx: ExecutionContext) -> None:
+    """Push current memory allocation index (stub for Python GC)."""
+    import gc
+
+    # Return count of tracked objects as a proxy for memory index
+    ctx.stack.push_value(JoyValue.integer(len(gc.get_objects())))
+
+
+@joy_word(name="__memorymax", params=0, doc="-> I")
+def memorymax_(ctx: ExecutionContext) -> None:
+    """Push maximum memory index (stub for Python GC)."""
+    import gc
+
+    # Return a large value that memory index should typically be less than
+    ctx.stack.push_value(JoyValue.integer(len(gc.get_objects()) * 2))

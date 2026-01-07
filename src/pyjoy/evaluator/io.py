@@ -393,3 +393,69 @@ def frename(ctx: ExecutionContext) -> None:
         ctx.stack.push_value(JoyValue.boolean(True))
     except OSError:
         ctx.stack.push_value(JoyValue.boolean(False))
+
+
+@joy_word(name="filetime", params=1, doc="P -> I")
+def filetime(ctx: ExecutionContext) -> None:
+    """Get file modification time as epoch integer. Returns null if missing."""
+    import os
+
+    path = ctx.stack.pop()
+    if path.type != JoyType.STRING:
+        raise JoyTypeError("filetime", "string", path.type.name)
+    try:
+        mtime = int(os.path.getmtime(path.value))
+        ctx.stack.push_value(JoyValue.integer(mtime))
+    except OSError:
+        # File doesn't exist or can't be accessed - push empty list as null
+        ctx.stack.push_value(JoyValue.list(()))
+
+
+@joy_word(name="finclude", params=1, doc="P ->")
+def finclude(ctx: ExecutionContext) -> None:
+    """Include and execute a Joy file. Does nothing if file doesn't exist."""
+    import os
+
+    filename = ctx.stack.pop()
+    if filename.type != JoyType.STRING:
+        raise JoyTypeError("finclude", "string", filename.type.name)
+
+    path = filename.value
+
+    # Search for file in various locations
+    search_paths = [
+        os.path.dirname(os.path.abspath(path)),
+        os.getcwd(),
+    ]
+
+    stdlib_path = os.path.join(os.path.dirname(__file__), "..", "stdlib")
+    if os.path.exists(stdlib_path):
+        search_paths.append(stdlib_path)
+
+    file_path = None
+    if os.path.isabs(path):
+        if os.path.exists(path):
+            file_path = path
+    else:
+        for search_dir in search_paths:
+            candidate = os.path.join(search_dir, path)
+            if os.path.exists(candidate):
+                file_path = candidate
+                break
+        if file_path is None and os.path.exists(path):
+            file_path = path
+
+    # Unlike include, finclude silently does nothing if file doesn't exist
+    if file_path is None:
+        return
+
+    with open(file_path, "r") as f:
+        source = f.read()
+
+    from pyjoy.parser import Parser
+
+    parser = Parser()
+    result = parser.parse_full(source)
+
+    # Execute the program
+    ctx.evaluator.execute(result.program)

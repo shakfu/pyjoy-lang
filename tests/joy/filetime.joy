@@ -3,5 +3,5 @@
     version : 1.4
     date    : 08/12/24
 *)
-"filetime.joy" filetime localtime "%c%n" strftime.
+"tests/joy/filetime.joy" filetime localtime "%c%n" strftime.
 "exist" filetime null.

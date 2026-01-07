@@ -2,44 +2,47 @@
 
 ## Current Test Results
 
-**Python Interpreter:** 186/215 tests passing (86.5%)
+**Python Interpreter:** 194/215 tests passing (90.2%)
 **C Backend:** 199/215 tests passing (92.6%)
 **pytest (unit tests):** 430/430 passing (100%)
 
-Note: Recent fixes include inline definition processing (definitions now execute in order, not all upfront), set operations for and/or/xor/not, type preservation in map/filter, stack operation fixes, and type system updates.
+Note: Recent fixes include `case` combinator (default case semantics), Float/SET bit-level equality (IEEE 754), iterative linrec combinator, and new primitives.
 
 ---
 
 ## Remaining Tasks
 
-### Missing Primitives (6)
+### Known Issues
 
-| Primitive | Tests Affected | Description |
-|-----------|---------------|-------------|
-| `filetime` | 1 test | Get file modification time |
-| `finclude` | 1 test | Include/execute Joy file at runtime |
-| `id` | 1 test | Identity function (push symbol as-is) |
-| `setecho` | 1 test | Set echo mode |
-| `setsize` | 1 test | Set stack size limit |
-| `__memoryindex` | 1 test | Memory index for gc |
+| Test | Issue |
+|------|-------|
+| condlinrec.joy, condnestrec.joy | Conditional recursion combinator bugs |
+| app11.joy | app11 not consuming all expected args |
+| treestep.joy | Tree step combinator issue |
+| argc.joy, argv.joy | Command-line argument test environment mismatch |
 
-### Bug Fixes Needed
-
-These bugs were revealed when `.` started printing output:
-
-1. **Float/Set bit-level equality** - `3.14159 {bits} =` expects IEEE 754 bit comparison (2 tests in eql.joy)
-
-### Other Categories
+### Test Categories (Non-Bug)
 
 | Category | Count | Notes |
 |----------|-------|-------|
-| abort/quit behavior | 3 tests | Expected behavior (exit codes) |
+| abort/quit behavior | 3 tests | Expected behavior (intentional exit codes) |
 | Interactive input | 1 test | `get.joy` needs stdin |
+| Documentation output | 3 tests | help.joy, manual.joy, undefs.joy - output format |
 
 ---
 
 ## Recently Completed
 
+- [x] `case` combinator - Fixed default case semantics (last clause is always default, X preserved)
+- [x] Float/SET bit-level equality - `3.14159 {bits} =` now compares IEEE 754 bit representation
+- [x] Iterative `linrec` combinator - Prevents Python stack overflow with deep recursion (e.g., `from-to-list 1 14000`)
+- [x] `filetime` primitive - Get file modification time as epoch integer
+- [x] `finclude` primitive - Include/execute Joy file at runtime (silent on missing files)
+- [x] `id` primitive - Identity function (no-op)
+- [x] `setecho`/`echo` primitives - Set and get echo mode
+- [x] `setautoput`/`autoput` primitives - Set and get autoput mode
+- [x] `setsize` primitive - Returns max set size (64)
+- [x] `__memoryindex`/`__memorymax` primitives - Memory tracking stubs for GC tests
 - [x] File I/O path fixes - Updated test files to use full paths; fixed `fseek` to return `S B` (stream + boolean) (8 tests)
 - [x] `$` shell escape - Lines starting with `$` at column 0 execute rest of line as shell command (7 tests)
 - [x] Inline definition processing - DEFINE/LIBRA blocks are now processed in order as code executes, not all upfront (fixes cond.joy and other tests that redefine words)

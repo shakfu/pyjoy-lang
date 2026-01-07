@@ -259,11 +259,10 @@ def compile_joy_to_c(
             - "executable": Path to executable (if compiled)
             - "makefile": Path to Makefile (if output_dir provided)
     """
+    from ...parser import Definition
     from .converter import JoyToCConverter
     from .emitter import CEmitter
     from .preprocessor import preprocess_includes
-
-    from ...parser import Definition
 
     # Parse and preprocess (expands includes)
     if source_path:

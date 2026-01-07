@@ -99,6 +99,8 @@ class Evaluator:
         self.ctx.set_evaluator(self)
         self.definitions: Dict[str, JoyQuotation] = {}
         self.undeferror: bool = True  # If True, undefined words raise error
+        self.echo_mode: int = 0  # Echo mode for setecho/echo
+        self.autoput_mode: int = 0  # Autoput mode for setautoput/autoput
         if load_stdlib:
             self._load_stdlib()
 
@@ -238,7 +240,7 @@ class Evaluator:
                         source = f.read()
                     parser = Parser()
                     result = parser.parse_full(source)
-                    # Execute the program (definitions are inlined and processed as encountered)
+                    # Execute (definitions are processed inline)
                     self.execute(result.program)
         finally:
             sys.stdout = old_stdout

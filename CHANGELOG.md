@@ -3,6 +3,13 @@
 ## [Unreleased]
 
 ### Fixed
+- `=` equality: Float/SET comparison now uses IEEE 754 bit representation
+  - `1.0 {0 48 49 50 51 52 62} =` correctly compares float bits to set bits
+- `linrec`: Converted from recursive to iterative implementation
+  - Fixes stack overflow in gc.joy (`from-to-list 1 14000` now works)
+- `case`: Fixed semantics to match Joy reference
+  - Last clause is now treated as default regardless of structure
+  - X is preserved on stack for default case, consumed for matched cases
 - `filter`/`split`: Now preserve STRING and SET types (were always returning LIST)
   - `"test" ['t <] filter` now returns `"es"` instead of `['e' 's']`
 - `all`/`some`: Empty predicate now returns `false` (was returning `true`)
@@ -29,6 +36,13 @@
 - `construct`: Fixed to push individual results instead of a list
 
 ### Added
+- `filetime`: Get file modification time as epoch integer (returns empty list if missing)
+- `finclude`: Include and execute Joy file at runtime (silent no-op if file missing)
+- `id`: Identity function (no-op)
+- `setecho`/`echo`: Set/get echo mode
+- `setautoput`/`autoput`: Set/get autoput mode
+- `setsize`: Push maximum set size (64)
+- `__memoryindex`/`__memorymax`: Memory primitives for garbage collection
 - `.` primitive: Print TOS with newline (same as `putln` but no-op if stack empty)
 - `CONST` keyword: Parser now handles CONST blocks (same as DEFINE/LIBRA)
 - `-name` symbols: Scanner handles symbols starting with `-` (like `-inf`)
@@ -46,18 +60,9 @@
 - Standard library loading: `inilib.joy` loaded first, then `agglib.joy`
 
 ### Coverage
-- Python interpreter: 154/215 Joy tests passing (71.6%)
+- Python interpreter: 194/215 Joy tests passing (90.2%)
 - C backend: 199/215 Joy tests passing (92.6%)
-- pytest: 420/420 unit tests passing (100%)
-
-### Missing Primitives (7)
-- `$` - String format/interpolation operator
-- `filetime` - Get file modification time
-- `finclude` - Include Joy file at runtime
-- `id` - Identity function
-- `setecho` - Set echo mode
-- `setsize` - Set stack size limit
-- `__memoryindex` - Memory index for gc
+- pytest: 430/430 unit tests passing (100%)
 
 ---
 

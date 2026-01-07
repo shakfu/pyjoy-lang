@@ -241,16 +241,9 @@ class IncludePreprocessor:
             parser = Parser()
             result = parser.parse_full(source)
 
-            # Recursively process includes in the included file
-            new_base = include_path.parent
-            _, nested_defs = self._process_terms(list(result.program.terms), new_base)
-
-            # Collect definitions: nested includes first, then this file's defs
-            all_defs: List[Definition] = []
-            all_defs.extend(nested_defs)
-            all_defs.extend(result.definitions)
-
-            return all_defs
+            # Return definitions from the included file
+            # Nested includes are handled when definitions are processed
+            return list(result.definitions)
 
         finally:
             self._include_stack.pop()

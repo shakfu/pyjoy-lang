@@ -11,7 +11,7 @@ The primary aim of this project is to [implement the Joy language in Python 3](d
 > and leave the generation of machine code to the C compiler. I would very much
 > welcome if somebody were to take up the task." [A Conversation with Manfred von Thun](https://www.nsl.com/papers/interview.htm)
 
-This project now includes merged functionality from [pyjoy2](https://github.com/shakfu/pyjoy2), providing a **dual-mode architecture**: strict mode (`strict=True`) for Joy compliance, and pythonic mode (`strict=False`) for Python interoperability.
+The implementation provides a **dual-mode architecture**: strict mode (`strict=True`) for Joy compliance, and pythonic mode (`strict=False`) for Python interoperability.
 
 ## Building
 
@@ -59,7 +59,7 @@ Joy> 5 square .
 Joy> quit
 ```
 
-### Execute Joy Files
+### Execute Joy files
 
 ```bash
 # Run a Joy source file
@@ -186,6 +186,59 @@ ev.run("`square(7)`")       # Pushes 49
 
 **Available in namespace**: `stack` (alias `S`), `ctx`, `evaluator`
 
+See [docs/pythonic-mode.md](docs/pythonic-mode.md) for the complete guide.
+
+### Extending Joy from Python
+
+Define new Joy words using Python decorators:
+
+```python
+from pyjoy.evaluator import joy_word, python_word, ExecutionContext
+from pyjoy.types import JoyValue
+
+# Simple functions: use @python_word (auto-pops args, pushes result)
+@python_word(name="hypot", doc="X Y -> Z")
+def hypot(x, y):
+    return (x**2 + y**2) ** 0.5
+
+# Full stack control: use @joy_word
+@joy_word(name="rot3", params=3, doc="X Y Z -> Y Z X")
+def rot3(ctx: ExecutionContext):
+    c, b, a = ctx.stack.pop_n(3)
+    ctx.stack.push_value(b)
+    ctx.stack.push_value(c)
+    ctx.stack.push_value(a)
+
+# Wrap existing Python functions
+import math
+
+@python_word(name="deg2rad")
+def deg2rad(degrees):
+    return math.radians(degrees)
+
+@python_word(name="factorial")
+def factorial(n):
+    return math.factorial(int(n))
+```
+
+**When to use each decorator:**
+
+| Decorator | Use When |
+|-----------|----------|
+| `@python_word` | Pure functions, fixed arity, single return value |
+| `@joy_word` | Need stack access, multiple results, control flow, or `ExecutionContext` |
+
+**Example: HTTP fetch word**
+
+```python
+@joy_word(name="http-get", params=1, doc="URL -> RESPONSE")
+def http_get(ctx: ExecutionContext):
+    import requests
+    url = ctx.stack.pop()
+    response = requests.get(url.value if hasattr(url, 'value') else url)
+    ctx.stack.push(response.text)
+```
+
 ### C Backend Features
 
 - Compiles Joy to standalone C executables
@@ -212,7 +265,17 @@ pyjoy/
     test_*.py           # pytest unit tests
   docs/
     pyjoy.md            # Implementation spec
+    pythonic-mode.md    # Python integration guide
+    comparison-with-joy.md  # Word comparison tables
+    tutorial.md         # Getting started
 ```
+
+## Documentation
+
+- [Implementation Spec](docs/pyjoy.md) - Architecture and design
+- [Pythonic Mode Guide](docs/pythonic-mode.md) - Python integration features
+- [Comparison with Joy](docs/comparison-with-joy.md) - Word-by-word comparison
+- [Tutorial](docs/tutorial.md) - Getting started with Joy
 
 ## License
 

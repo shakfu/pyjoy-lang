@@ -261,157 +261,235 @@ def typeof_(ctx: ExecutionContext) -> None:
         _push_integer(ctx, 0)  # UNKNOWN
 
 
+def _get_int_value(v: Any, op: str) -> int:
+    """Extract integer value from JoyValue or raw int."""
+    if is_joy_value(v):
+        if v.type != JoyType.INTEGER:
+            raise JoyTypeError(op, "INTEGER", v.type.name)
+        return v.value
+    if isinstance(v, int) and not isinstance(v, bool):
+        return v
+    raise JoyTypeError(op, "INTEGER", type(v).__name__)
+
+
+def _is_truthy(v: Any) -> bool:
+    """Check if a value is truthy (mode-aware)."""
+    if is_joy_value(v):
+        return v.is_truthy()
+    return bool(v)
+
+
 @joy_word(name="casting", params=2, doc="X T -> Y")
 def casting_(ctx: ExecutionContext) -> None:
     """Cast value X to type T (type code from typeof)."""
     import struct
 
     t, x = ctx.stack.pop_n(2)
-    if t.type != JoyType.INTEGER:
-        raise JoyTypeError("casting", "integer type code", t.type.name)
+    target_type = _get_int_value(t, "casting")
 
-    target_type = t.value
+    # Helper to push result in mode-appropriate way
+    def push_result(value: Any) -> None:
+        if ctx.strict:
+            ctx.stack.push_value(value)
+        else:
+            ctx.stack.push(value)
+
+    # Get raw value and type info for x
+    if is_joy_value(x):
+        x_type = x.type
+        x_val = x.value
+    else:
+        x_val = x
+        # Infer type from Python value
+        if isinstance(x, bool):
+            x_type = JoyType.BOOLEAN
+        elif isinstance(x, int):
+            x_type = JoyType.INTEGER
+        elif isinstance(x, float):
+            x_type = JoyType.FLOAT
+        elif isinstance(x, str):
+            x_type = JoyType.CHAR if len(x) == 1 else JoyType.STRING
+        elif isinstance(x, (list, tuple)):
+            x_type = JoyType.LIST
+        elif isinstance(x, JoyQuotation):
+            x_type = JoyType.QUOTATION
+        elif isinstance(x, frozenset):
+            x_type = JoyType.SET
+        else:
+            x_type = JoyType.OBJECT
 
     # Type codes: 0=list, 1=bool, 2=char, 3=int, 4=set,
     # 5=string, 6=symbol, 7=float, 8=file
     if target_type == 0:  # list
-        if x.type in (JoyType.LIST, JoyType.QUOTATION):
-            ctx.stack.push_value(x)
-        elif x.type == JoyType.STRING:
-            chars = tuple(JoyValue.char(c) for c in x.value)
-            ctx.stack.push_value(JoyValue.list(chars))
-        elif x.type == JoyType.SET:
-            items = tuple(JoyValue.integer(i) for i in sorted(x.value))
-            ctx.stack.push_value(JoyValue.list(items))
+        if x_type in (JoyType.LIST, JoyType.QUOTATION):
+            push_result(x)
+        elif x_type == JoyType.STRING:
+            if ctx.strict:
+                chars = tuple(JoyValue.char(c) for c in x_val)  # type: ignore[union-attr]
+                push_result(JoyValue.list(chars))
+            else:
+                push_result(list(x_val))  # type: ignore[arg-type]
+        elif x_type == JoyType.SET:
+            if ctx.strict:
+                items = tuple(JoyValue.integer(i) for i in sorted(x_val))  # type: ignore[arg-type]
+                push_result(JoyValue.list(items))
+            else:
+                push_result(list(sorted(x_val)))  # type: ignore[arg-type]
         else:
-            ctx.stack.push_value(JoyValue.list(()))
+            push_result(JoyValue.list(()) if ctx.strict else [])
 
     elif target_type == 1:  # bool
-        ctx.stack.push_value(JoyValue.boolean(x.is_truthy()))
+        result = _is_truthy(x)
+        push_result(JoyValue.boolean(result) if ctx.strict else result)
 
     elif target_type == 2:  # char
-        if x.type == JoyType.CHAR:
-            ctx.stack.push_value(x)
-        elif x.type == JoyType.INTEGER:
-            ctx.stack.push_value(JoyValue.char(chr(x.value & 0xFF)))
-        elif x.type == JoyType.STRING and x.value:
-            ctx.stack.push_value(JoyValue.char(x.value[0]))
+        if x_type == JoyType.CHAR:
+            push_result(x)
+        elif x_type == JoyType.INTEGER:
+            ch = chr(x_val & 0xFF)  # type: ignore[operator]
+            push_result(JoyValue.char(ch) if ctx.strict else ch)
+        elif x_type == JoyType.STRING and x_val:
+            ch = x_val[0]  # type: ignore[index]
+            push_result(JoyValue.char(ch) if ctx.strict else ch)
         else:
-            ctx.stack.push_value(JoyValue.char("\0"))
+            push_result(JoyValue.char("\0") if ctx.strict else "\0")
 
     elif target_type == 3:  # int
-        if x.type == JoyType.INTEGER:
-            ctx.stack.push_value(x)
-        elif x.type == JoyType.CHAR:
-            ctx.stack.push_value(JoyValue.integer(ord(x.value)))
-        elif x.type == JoyType.FLOAT:
-            ctx.stack.push_value(JoyValue.integer(int(x.value)))
-        elif x.type == JoyType.BOOLEAN:
-            ctx.stack.push_value(JoyValue.integer(1 if x.value else 0))
-        elif x.type == JoyType.SYMBOL:
+        if x_type == JoyType.INTEGER:
+            push_result(x)
+        elif x_type == JoyType.CHAR:
+            val = ord(x_val)  # type: ignore[arg-type]
+            push_result(JoyValue.integer(val) if ctx.strict else val)
+        elif x_type == JoyType.FLOAT:
+            val = int(x_val)  # type: ignore[arg-type]
+            push_result(JoyValue.integer(val) if ctx.strict else val)
+        elif x_type == JoyType.BOOLEAN:
+            val = 1 if x_val else 0
+            push_result(JoyValue.integer(val) if ctx.strict else val)
+        elif x_type == JoyType.SYMBOL:
             # Symbol stays as symbol when cast to int (per test)
-            ctx.stack.push_value(x)
+            push_result(x)
         else:
-            ctx.stack.push_value(JoyValue.integer(0))
+            push_result(JoyValue.integer(0) if ctx.strict else 0)
 
     elif target_type == 4:  # set
-        if x.type == JoyType.SET:
-            ctx.stack.push_value(x)
-        elif x.type == JoyType.INTEGER:
+        if x_type == JoyType.SET:
+            push_result(x)
+        elif x_type == JoyType.INTEGER:
             # Convert int to set containing that element (if 0-63)
-            if 0 <= x.value <= 63:
-                ctx.stack.push_value(JoyValue.joy_set(frozenset([x.value])))
+            int_val: int = x_val  # type: ignore[assignment]
+            if 0 <= int_val <= 63:
+                result_set: frozenset[int] = frozenset([int_val])
             else:
                 # Convert bits to set members
-                bits = set()
-                val = x.value
+                bits: set[int] = set()
                 for i in range(64):
-                    if val & (1 << i):
+                    if int_val & (1 << i):
                         bits.add(i)
-                ctx.stack.push_value(JoyValue.joy_set(frozenset(bits)))
-        elif x.type == JoyType.LIST:
-            items = frozenset(
-                v.value
-                for v in x.value
-                if isinstance(v, JoyValue) and v.type == JoyType.INTEGER
-            )
-            ctx.stack.push_value(JoyValue.joy_set(items))
+                result_set = frozenset(bits)
+            push_result(JoyValue.joy_set(result_set) if ctx.strict else result_set)
+        elif x_type == JoyType.LIST:
+            if is_joy_value(x):
+                items = frozenset(
+                    v.value
+                    for v in x_val  # type: ignore[union-attr]
+                    if is_joy_value(v) and v.type == JoyType.INTEGER
+                )
+            else:
+                items = frozenset(
+                    v for v in x_val  # type: ignore[union-attr]
+                    if isinstance(v, int) and not isinstance(v, bool)
+                )
+            push_result(JoyValue.joy_set(items) if ctx.strict else items)
         else:
-            ctx.stack.push_value(JoyValue.joy_set(frozenset()))
+            push_result(JoyValue.joy_set(frozenset()) if ctx.strict else frozenset())
 
     elif target_type == 5:  # string
-        if x.type == JoyType.STRING:
-            ctx.stack.push_value(x)
-        elif x.type == JoyType.CHAR:
-            ctx.stack.push_value(JoyValue.string(x.value))
-        elif x.type == JoyType.INTEGER:
+        if x_type == JoyType.STRING:
+            push_result(x)
+        elif x_type == JoyType.CHAR:
+            push_result(JoyValue.string(x_val) if ctx.strict else x_val)  # type: ignore[arg-type]
+        elif x_type == JoyType.INTEGER:
             # Integer to char (like type 2), then to string
-            ctx.stack.push_value(JoyValue.char(chr(x.value & 0xFF)))
-        elif x.type == JoyType.LIST:
-            chars = "".join(
-                v.value
-                for v in x.value
-                if isinstance(v, JoyValue) and v.type == JoyType.CHAR
-            )
-            ctx.stack.push_value(JoyValue.string(chars))
+            ch = chr(x_val & 0xFF)  # type: ignore[operator]
+            push_result(JoyValue.char(ch) if ctx.strict else ch)
+        elif x_type == JoyType.LIST:
+            if is_joy_value(x):
+                chars = "".join(
+                    v.value
+                    for v in x_val  # type: ignore[union-attr]
+                    if is_joy_value(v) and v.type == JoyType.CHAR
+                )
+            else:
+                chars = "".join(
+                    str(v) for v in x_val  # type: ignore[union-attr]
+                    if isinstance(v, str) and len(v) == 1
+                )
+            push_result(JoyValue.string(chars) if ctx.strict else chars)
         else:
-            ctx.stack.push_value(JoyValue.string(str(x.value)))
+            s = str(x_val)
+            push_result(JoyValue.string(s) if ctx.strict else s)
 
     elif target_type == 6:  # symbol
-        if x.type == JoyType.SYMBOL:
-            ctx.stack.push_value(x)
-        elif x.type == JoyType.CHAR:
+        if x_type == JoyType.SYMBOL:
+            push_result(x)
+        elif x_type == JoyType.CHAR:
             # Char to integer (per test: 'A -> 65)
-            ctx.stack.push_value(JoyValue.integer(ord(x.value)))
-        elif x.type == JoyType.STRING:
-            ctx.stack.push_value(JoyValue.symbol(x.value))
+            val = ord(x_val)  # type: ignore[arg-type]
+            push_result(JoyValue.integer(val) if ctx.strict else val)
+        elif x_type == JoyType.STRING:
+            push_result(JoyValue.symbol(x_val) if ctx.strict else x_val)  # type: ignore[arg-type]
         else:
-            ctx.stack.push_value(JoyValue.symbol(str(x.value)))
+            s = str(x_val)
+            push_result(JoyValue.symbol(s) if ctx.strict else s)
 
     elif target_type == 7:  # float
-        if x.type == JoyType.FLOAT:
-            ctx.stack.push_value(x)
-        elif x.type == JoyType.INTEGER:
+        if x_type == JoyType.FLOAT:
+            push_result(x)
+        elif x_type == JoyType.INTEGER:
             # Int bits to set (per test: 123456789 -> set of bit positions)
             bits = set()
-            val = x.value
+            val = x_val
             for i in range(64):
-                if val & (1 << i):
+                if val & (1 << i):  # type: ignore[operator]
                     bits.add(i)
-            ctx.stack.push_value(JoyValue.joy_set(frozenset(bits)))
-        elif x.type == JoyType.CHAR:
-            ctx.stack.push_value(JoyValue.floating(float(ord(x.value))))
+            result = frozenset(bits)
+            push_result(JoyValue.joy_set(result) if ctx.strict else result)
+        elif x_type == JoyType.CHAR:
+            val = float(ord(x_val))  # type: ignore[arg-type]
+            push_result(JoyValue.floating(val) if ctx.strict else val)
         else:
-            ctx.stack.push_value(JoyValue.floating(0.0))
+            push_result(JoyValue.floating(0.0) if ctx.strict else 0.0)
 
     elif target_type == 8:  # file
         # Can't really cast to file
-        ctx.stack.push_value(JoyValue.file(None))
+        push_result(JoyValue.file(None) if ctx.strict else None)
 
     elif target_type == 9:  # list (alternate code)
-        if x.type in (JoyType.LIST, JoyType.QUOTATION):
-            ctx.stack.push_value(x)
+        if x_type in (JoyType.LIST, JoyType.QUOTATION):
+            push_result(x)
         else:
-            ctx.stack.push_value(JoyValue.list(()))
+            push_result(JoyValue.list(()) if ctx.strict else [])
 
     elif target_type == 10:  # float from int bits
-        if x.type == JoyType.INTEGER:
+        if x_type == JoyType.INTEGER:
             # Reinterpret int bits as float64
             try:
-                result = struct.unpack("d", struct.pack("q", x.value))[0]
-                ctx.stack.push_value(JoyValue.floating(result))
+                result = struct.unpack("d", struct.pack("q", x_val))[0]
             except struct.error:
-                ctx.stack.push_value(JoyValue.floating(0.0))
+                result = 0.0
+            push_result(JoyValue.floating(result) if ctx.strict else result)
         else:
-            ctx.stack.push_value(JoyValue.floating(float(x.value)))
+            val = float(x_val) if isinstance(x_val, (int, float)) else 0.0
+            push_result(JoyValue.floating(val) if ctx.strict else val)
 
     elif target_type == 11:  # file/special
         # Return different value to show conversion happened
-        ctx.stack.push_value(JoyValue.file(None))
+        push_result(JoyValue.file(None) if ctx.strict else None)
 
     else:
         # Unknown type, return as-is
-        ctx.stack.push_value(x)
+        push_result(x)
 
 
 # -----------------------------------------------------------------------------
@@ -419,12 +497,77 @@ def casting_(ctx: ExecutionContext) -> None:
 # -----------------------------------------------------------------------------
 
 
+def _check_is_integer(x: Any) -> bool:
+    """Check if x is an integer (mode-aware)."""
+    if is_joy_value(x):
+        return x.type == JoyType.INTEGER
+    return isinstance(x, int) and not isinstance(x, bool)
+
+
+def _check_is_char(x: Any) -> bool:
+    """Check if x is a character (mode-aware)."""
+    if is_joy_value(x):
+        return x.type == JoyType.CHAR
+    return isinstance(x, str) and len(x) == 1
+
+
+def _check_is_logical(x: Any) -> bool:
+    """Check if x is a boolean (mode-aware)."""
+    if is_joy_value(x):
+        return x.type == JoyType.BOOLEAN
+    return isinstance(x, bool)
+
+
+def _check_is_set(x: Any) -> bool:
+    """Check if x is a set (mode-aware)."""
+    if is_joy_value(x):
+        return x.type == JoyType.SET
+    return isinstance(x, frozenset)
+
+
+def _check_is_string(x: Any) -> bool:
+    """Check if x is a string (mode-aware)."""
+    if is_joy_value(x):
+        return x.type == JoyType.STRING
+    # In pythonic mode, multi-char strings are strings (not chars)
+    return isinstance(x, str) and len(x) != 1
+
+
+def _check_is_list(x: Any) -> bool:
+    """Check if x is a list or quotation (mode-aware)."""
+    if is_joy_value(x):
+        return x.type in (JoyType.LIST, JoyType.QUOTATION)
+    return isinstance(x, (list, tuple, JoyQuotation))
+
+
+def _check_is_float(x: Any) -> bool:
+    """Check if x is a float (mode-aware)."""
+    if is_joy_value(x):
+        return x.type == JoyType.FLOAT
+    return isinstance(x, float)
+
+
+def _check_is_file(x: Any) -> bool:
+    """Check if x is a file (mode-aware)."""
+    if is_joy_value(x):
+        return x.type == JoyType.FILE
+    return hasattr(x, 'read') and hasattr(x, 'write')
+
+
+def _push_value_for_conditional(ctx: ExecutionContext, x: Any) -> None:
+    """Push x back to stack in mode-appropriate way."""
+    if ctx.strict:
+        ctx.stack.push_value(x)
+    else:
+        ctx.stack.push(x)
+
+
 @joy_word(name="ifinteger", params=3, doc="X [T] [F] -> ...")
 def ifinteger(ctx: ExecutionContext) -> None:
     """Execute T if X is integer, else F."""
     f_quot, t_quot, x = ctx.stack.pop_n(3)
-    ctx.stack.push_value(x)
-    if x.type == JoyType.INTEGER:
+    _push_value_for_conditional(ctx, x)
+    if _check_is_integer(x):
         ctx.evaluator.execute(expect_quotation(t_quot, "ifinteger"))
     else:
         ctx.evaluator.execute(expect_quotation(f_quot, "ifinteger"))
@@ -434,8 +577,8 @@ def ifinteger(ctx: ExecutionContext) -> None:
 def ifchar(ctx: ExecutionContext) -> None:
     """Execute T if X is char, else F."""
     f_quot, t_quot, x = ctx.stack.pop_n(3)
-    ctx.stack.push_value(x)
-    if x.type == JoyType.CHAR:
+    _push_value_for_conditional(ctx, x)
+    if _check_is_char(x):
         ctx.evaluator.execute(expect_quotation(t_quot, "ifchar"))
     else:
         ctx.evaluator.execute(expect_quotation(f_quot, "ifchar"))
@@ -445,8 +588,8 @@ def ifchar(ctx: ExecutionContext) -> None:
 def iflogical(ctx: ExecutionContext) -> None:
     """Execute T if X is boolean, else F."""
     f_quot, t_quot, x = ctx.stack.pop_n(3)
-    ctx.stack.push_value(x)
-    if x.type == JoyType.BOOLEAN:
+    _push_value_for_conditional(ctx, x)
+    if _check_is_logical(x):
         ctx.evaluator.execute(expect_quotation(t_quot, "iflogical"))
     else:
         ctx.evaluator.execute(expect_quotation(f_quot, "iflogical"))
@@ -456,8 +599,8 @@ def iflogical(ctx: ExecutionContext) -> None:
 def ifset(ctx: ExecutionContext) -> None:
     """Execute T if X is set, else F."""
     f_quot, t_quot, x = ctx.stack.pop_n(3)
-    ctx.stack.push_value(x)
-    if x.type == JoyType.SET:
+    _push_value_for_conditional(ctx, x)
+    if _check_is_set(x):
         ctx.evaluator.execute(expect_quotation(t_quot, "ifset"))
     else:
         ctx.evaluator.execute(expect_quotation(f_quot, "ifset"))
@@ -467,8 +610,8 @@ def ifset(ctx: ExecutionContext) -> None:
 def ifstring(ctx: ExecutionContext) -> None:
     """Execute T if X is string, else F."""
     f_quot, t_quot, x = ctx.stack.pop_n(3)
-    ctx.stack.push_value(x)
-    if x.type == JoyType.STRING:
+    _push_value_for_conditional(ctx, x)
+    if _check_is_string(x):
         ctx.evaluator.execute(expect_quotation(t_quot, "ifstring"))
     else:
         ctx.evaluator.execute(expect_quotation(f_quot, "ifstring"))
@@ -478,8 +621,8 @@ def ifstring(ctx: ExecutionContext) -> None:
 def iflist(ctx: ExecutionContext) -> None:
     """Execute T if X is list, else F."""
     f_quot, t_quot, x = ctx.stack.pop_n(3)
-    ctx.stack.push_value(x)
-    if x.type in (JoyType.LIST, JoyType.QUOTATION):
+    _push_value_for_conditional(ctx, x)
+    if _check_is_list(x):
         ctx.evaluator.execute(expect_quotation(t_quot, "iflist"))
     else:
         ctx.evaluator.execute(expect_quotation(f_quot, "iflist"))
@@ -489,8 +632,8 @@ def iflist(ctx: ExecutionContext) -> None:
 def iffloat(ctx: ExecutionContext) -> None:
     """Execute T if X is float, else F."""
     f_quot, t_quot, x = ctx.stack.pop_n(3)
-    ctx.stack.push_value(x)
-    if x.type == JoyType.FLOAT:
+    _push_value_for_conditional(ctx, x)
+    if _check_is_float(x):
         ctx.evaluator.execute(expect_quotation(t_quot, "iffloat"))
     else:
         ctx.evaluator.execute(expect_quotation(f_quot, "iffloat"))
@@ -500,8 +643,8 @@ def iffloat(ctx: ExecutionContext) -> None:
 def iffile(ctx: ExecutionContext) -> None:
     """Execute T if X is file, else F."""
     f_quot, t_quot, x = ctx.stack.pop_n(3)
-    ctx.stack.push_value(x)
-    if x.type == JoyType.FILE:
+    _push_value_for_conditional(ctx, x)
+    if _check_is_file(x):
         ctx.evaluator.execute(expect_quotation(t_quot, "iffile"))
     else:
         ctx.evaluator.execute(expect_quotation(f_quot, "iffile"))

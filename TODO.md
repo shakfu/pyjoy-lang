@@ -2,11 +2,11 @@
 
 ## Current Test Results
 
-**Python Interpreter:** 198/215 tests passing (92.1%)
+**Python Interpreter:** 201/215 tests passing (93.5%)
 **C Backend:** 199/215 tests passing (92.6%)
 **pytest (unit tests):** 712/712 passing (100%)
 
-Note: Recent fixes include `app11`, `treestep`, `condlinrec`, and `condnestrec` combinators.
+Note: Recent fixes include `argc`, `argv`, `autoput`, `equal`, `casting`, and combinator fixes.
 
 ---
 
@@ -16,25 +16,28 @@ Note: Recent fixes include `app11`, `treestep`, `condlinrec`, and `condnestrec` 
 
 | Test | Issue |
 |------|-------|
-| argc.joy, argv.joy | Command-line argument test environment mismatch |
-| ldexp.joy | Prelib loading message appears in output |
-| maxint.joy | Python arbitrary precision differs from Joy64 fixed 64-bit |
+| maxint.joy | Python arbitrary precision differs from Joy64 fixed 64-bit overflow |
 | mktime.joy, strftime.joy | Time function format/behavior differences |
-| strtol.joy, sametype.joy | Minor primitive differences |
+| ldexp.joy | Prelib loading message appears in output |
+| sametype.joy | Minor primitive differences |
 | fflush.joy | File flush behavior |
 
 ### Test Categories (Non-Bug)
 
 | Category | Count | Notes |
 |----------|-------|-------|
-| abort/quit behavior | 3 tests | Expected behavior (intentional exit codes) |
+| abort/quit behavior | 4 tests | Expected behavior (intentional exit codes) |
 | Interactive input | 1 test | `get.joy` needs stdin |
-| Documentation output | 3 tests | help.joy, manual.joy, undefs.joy - output format |
+| Documentation output | 2 tests | help.joy, manual.joy - output format |
 
 ---
 
 ## Recently Completed
 
+- [x] `argc`/`argv` primitives - Now use Joy-specific argv (just the Joy filename when running a file)
+- [x] `autoput` default - Changed from 0 to 1 (enabled by default, matching Joy42)
+- [x] `equal` function - Now compares symbols and strings by their text content
+- [x] `casting` primitive - Fixed type codes to match Joy42 `typeof` codes
 - [x] `app11` combinator - Fixed to clear stack before applying quotation to X and Y
 - [x] `treestep` combinator - Fixed to handle JoyQuotation objects in tree structure
 - [x] `condlinrec` combinator - Fixed clause handling for JoyQuotation types

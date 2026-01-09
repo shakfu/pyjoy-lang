@@ -350,6 +350,12 @@ def _values_equal(a: Any, b: Any, strict: bool = True) -> bool:
         if a.type == JoyType.SYMBOL and b.type == JoyType.SYMBOL:
             return a.value == b.value
 
+        # Symbol-String comparison: symbol "foo" equals string "foo"
+        if a.type == JoyType.SYMBOL and b.type == JoyType.STRING:
+            return a.value == b.value
+        if a.type == JoyType.STRING and b.type == JoyType.SYMBOL:
+            return a.value == b.value
+
     # Try numeric comparison (int, float, char, bool, set, empty list)
     av = _numeric_value(a)
     bv = _numeric_value(b)

@@ -183,13 +183,15 @@ def system_(ctx: ExecutionContext) -> None:
 @joy_word(name="argc", params=0, doc="-> I")
 def argc_(ctx: ExecutionContext) -> None:
     """Push number of command line arguments."""
-    ctx.stack.push_value(JoyValue.integer(len(sys.argv)))
+    argv = ctx.evaluator.joy_argv if ctx.evaluator.joy_argv else sys.argv
+    ctx.stack.push_value(JoyValue.integer(len(argv)))
 
 
 @joy_word(name="argv", params=0, doc="-> L")
 def argv_(ctx: ExecutionContext) -> None:
     """Push list of command line arguments."""
-    args = tuple(JoyValue.string(arg) for arg in sys.argv)
+    argv = ctx.evaluator.joy_argv if ctx.evaluator.joy_argv else sys.argv
+    args = tuple(JoyValue.string(arg) for arg in argv)
     ctx.stack.push_value(JoyValue.list(args))
 
 

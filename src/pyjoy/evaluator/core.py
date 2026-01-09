@@ -360,7 +360,8 @@ class Evaluator:
         self.definitions: Dict[str, JoyQuotation] = {}
         self.undeferror: bool = True  # If True, undefined words raise error
         self.echo_mode: int = 0  # Echo mode for setecho/echo
-        self.autoput_mode: int = 0  # Autoput mode for setautoput/autoput
+        self.autoput_mode: int = 1  # Autoput mode for setautoput/autoput (default=1)
+        self.joy_argv: list[str] = []  # Joy-specific argv (set when running a file)
 
         # Python namespace for interop (strict=False mode)
         self._init_python_namespace()

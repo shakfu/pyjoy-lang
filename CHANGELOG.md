@@ -31,6 +31,10 @@ Merged functionality from [pyjoy2](https://github.com/shakfu/pyjoy2) to support 
 
 ### Fixed
 
+- `argc`/`argv`: Now use Joy-specific argv (just the Joy filename when running a file)
+- `autoput`: Default value changed from 0 to 1 (enabled by default, matching Joy42)
+- `equal`: Now compares symbols and strings by their text content
+- `casting`: Fixed type codes to match Joy42 `typeof` codes (4=bool, 5=char, 6=int, etc.)
 - `app11` combinator: Fixed to clear stack before applying quotation to X and Y
 - `treestep` combinator: Fixed to handle JoyQuotation objects in tree structure
 - `condlinrec`/`condnestrec` combinators: Fixed clause handling for JoyQuotation types
@@ -96,7 +100,7 @@ Merged functionality from [pyjoy2](https://github.com/shakfu/pyjoy2) to support 
 
 ### Coverage
 
-- Python interpreter: 198/215 Joy tests passing (92.1%)
+- Python interpreter: 201/215 Joy tests passing (93.5%)
 - C backend: 199/215 Joy tests passing (92.6%)
 - pytest: 712/712 unit tests passing (100%)
 

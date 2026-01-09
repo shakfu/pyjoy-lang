@@ -294,6 +294,8 @@ def run_single_test(
         return "error", f"Read error: {e}"
 
     evaluator = Evaluator(load_stdlib=True)
+    # Set Joy-specific argv (just the filename, like Joy42)
+    evaluator.joy_argv = [filepath.name]
     stdout_capture = io.StringIO()
     stderr_capture = io.StringIO()
 
@@ -428,6 +430,8 @@ def execute_file(filepath: str) -> int:
         return 1
 
     evaluator = Evaluator()
+    # Set Joy-specific argv (just the filename, like Joy42)
+    evaluator.joy_argv = [path.name]
     try:
         evaluator.run(source)
         return 0

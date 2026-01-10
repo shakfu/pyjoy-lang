@@ -2,11 +2,11 @@
 
 ## Current Test Results
 
-**Python Interpreter:** 201/215 tests passing (93.5%)
-**C Backend:** 199/215 tests passing (92.6%)
+**Python Interpreter:** 209/215 tests passing (97.2%)
+**C Backend:** 198/215 tests passing (92.1%)
 **pytest (unit tests):** 712/712 passing (100%)
 
-Note: Recent fixes include `argc`, `argv`, `autoput`, `equal`, `casting`, and combinator fixes.
+Note: Recent fixes include `inf`/`-inf` float literals, bit-level INT->FLOAT casting, `strtol` base-0 detection, test runner false positive fix, C backend INFINITY/NAN support.
 
 ---
 
@@ -17,10 +17,7 @@ Note: Recent fixes include `argc`, `argv`, `autoput`, `equal`, `casting`, and co
 | Test | Issue |
 |------|-------|
 | maxint.joy | Python arbitrary precision differs from Joy64 fixed 64-bit overflow |
-| mktime.joy, strftime.joy | Time function format/behavior differences |
-| ldexp.joy | Prelib loading message appears in output |
-| sametype.joy | Minor primitive differences |
-| fflush.joy | File flush behavior |
+| mktime.joy | Time function format/behavior differences |
 
 ### Test Categories (Non-Bug)
 
@@ -28,12 +25,16 @@ Note: Recent fixes include `argc`, `argv`, `autoput`, `equal`, `casting`, and co
 |----------|-------|-------|
 | abort/quit behavior | 4 tests | Expected behavior (intentional exit codes) |
 | Interactive input | 1 test | `get.joy` needs stdin |
-| Documentation output | 2 tests | help.joy, manual.joy - output format |
 
 ---
 
 ## Recently Completed
 
+- [x] `inf`/`-inf`/`nan` literals - Scanner now recognizes special float literals (with word boundary and definition lookahead)
+- [x] `casting` INT->FLOAT - Now uses bit-level reinterpretation (treats integer bits as IEEE 754 double)
+- [x] `strtol` base-0 - Auto-detects hex (0x prefix) and octal (0 prefix) like C
+- [x] `sametype` for builtins - Two builtin symbols only sametype if same name
+- [x] `fflush` / FILE equality - Added FILE comparison to `_joy_equals`
 - [x] `argc`/`argv` primitives - Now use Joy-specific argv (just the Joy filename when running a file)
 - [x] `autoput` default - Changed from 0 to 1 (enabled by default, matching Joy42)
 - [x] `equal` function - Now compares symbols and strings by their text content

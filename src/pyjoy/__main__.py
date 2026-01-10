@@ -319,9 +319,13 @@ def run_single_test(
         output = stdout_capture.getvalue()
         errors = stderr_capture.getvalue()
 
-        # Check for "false" in output (indicates test failure)
-        if "false" in output.lower():
-            return "fail", output.strip()
+        # Check for "false" as a standalone test result (not part of documentation)
+        # Test assertions output "false" at the start of a line with no indentation
+        # Documentation (help, manual) has "false" with leading whitespace
+        for line in output.split("\n"):
+            # Only match "false" with no leading whitespace (test result, not docs)
+            if line.lower() == "false" or line.lower().startswith("false\t"):
+                return "fail", output.strip()
 
         # Check for errors
         if errors:
@@ -429,7 +433,7 @@ def execute_file(filepath: str) -> int:
         print(f"Error reading file: {e}", file=sys.stderr)
         return 1
 
-    evaluator = Evaluator()
+    evaluator = Evaluator(load_stdlib=True)
     # Set Joy-specific argv (just the filename, like Joy42)
     evaluator.joy_argv = [path.name]
     try:

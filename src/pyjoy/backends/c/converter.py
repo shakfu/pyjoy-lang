@@ -28,7 +28,16 @@ class CValue:
         if self.type == "integer":
             return f"joy_integer({self.value})"
         elif self.type == "float":
-            return f"joy_float({self.value})"
+            import math
+            if math.isinf(self.value):
+                if self.value > 0:
+                    return "joy_float(INFINITY)"
+                else:
+                    return "joy_float(-INFINITY)"
+            elif math.isnan(self.value):
+                return "joy_float(NAN)"
+            else:
+                return f"joy_float({self.value})"
         elif self.type == "boolean":
             return f"joy_boolean({'true' if self.value else 'false'})"
         elif self.type == "char":

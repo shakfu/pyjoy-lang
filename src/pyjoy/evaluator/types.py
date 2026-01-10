@@ -192,12 +192,45 @@ def _get_type_key(x: Any) -> str:
 
 @joy_word(name="sametype", params=2, doc="X Y -> B")
 def sametype(ctx: ExecutionContext) -> None:
-    """Test if X and Y have the same type."""
+    """Test if X and Y have the same type.
+
+    For symbols, Joy42 semantics are:
+    - Two builtins are sametype only if they're the same builtin (same name)
+    - Two user-defined words are sametype (regardless of which word)
+    - A builtin and user-defined word are not sametype
+    """
     b, a = ctx.stack.pop_n(2)
+
     if is_joy_value(a) and is_joy_value(b):
-        result = a.type == b.type
+        # Both are JoyValues - check types
+        if a.type != b.type:
+            result = False
+        elif a.type == JoyType.SYMBOL:
+            # For symbols, check if both are same kind (builtin or user-defined)
+            # and for builtins, must be the same symbol
+            a_is_builtin = get_primitive(a.value) is not None
+            b_is_builtin = get_primitive(b.value) is not None
+            a_is_usrdef = a.value in ctx.evaluator.definitions
+            b_is_usrdef = b.value in ctx.evaluator.definitions
+
+            if a_is_builtin and b_is_builtin:
+                # Two builtins - must be same symbol
+                result = a.value == b.value
+            elif a_is_usrdef and b_is_usrdef:
+                # Two user-defined - always sametype
+                result = True
+            elif not a_is_builtin and not a_is_usrdef and not b_is_builtin and not b_is_usrdef:
+                # Both are unknown symbols - same unknown type
+                result = True
+            else:
+                # Mix of builtin/usrdef/unknown - different types
+                result = False
+        else:
+            # Non-symbol types - same type is sufficient
+            result = True
     else:
         result = _get_type_key(a) == _get_type_key(b)
+
     _push_boolean(ctx, result)
 
 
@@ -437,7 +470,11 @@ def casting_(ctx: ExecutionContext) -> None:
         if x_type == JoyType.FLOAT:
             push_result(x)
         elif x_type == JoyType.INTEGER:
-            val = float(x_val)  # type: ignore[arg-type]
+            # Bit-level reinterpretation: treat integer bits as IEEE 754 double
+            import struct
+
+            int_val: int = x_val & 0xFFFFFFFFFFFFFFFF  # type: ignore[assignment]
+            val = struct.unpack("d", struct.pack("Q", int_val))[0]
             push_result(JoyValue.floating(val) if ctx.strict else val)
         elif x_type == JoyType.CHAR:
             val = float(ord(x_val))  # type: ignore[arg-type]

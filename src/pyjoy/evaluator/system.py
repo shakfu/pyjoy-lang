@@ -302,7 +302,13 @@ def formatf(ctx: ExecutionContext) -> None:
 
 @joy_word(name="strtol", params=2, doc="S I -> N")
 def strtol(ctx: ExecutionContext) -> None:
-    """Convert string S to integer in base I."""
+    """Convert string S to integer in base I.
+
+    If base is 0, auto-detect based on prefix:
+    - "0x" or "0X" -> hex (base 16)
+    - "0" -> octal (base 8)
+    - otherwise -> decimal (base 10)
+    """
     base, s = ctx.stack.pop_n(2)
     if s.type != JoyType.STRING:
         raise JoyTypeError("strtol", "string", s.type.name)
@@ -310,7 +316,20 @@ def strtol(ctx: ExecutionContext) -> None:
         raise JoyTypeError("strtol", "integer (base)", base.type.name)
 
     try:
-        result = int(s.value, base.value)
+        str_val = s.value.strip()
+        base_val = base.value
+
+        if base_val == 0:
+            # Auto-detect base like C's strtol
+            if str_val.startswith(("0x", "0X")):
+                result = int(str_val, 16)
+            elif str_val.startswith("0") and len(str_val) > 1 and str_val[1:].isdigit():
+                result = int(str_val, 8)
+            else:
+                result = int(str_val, 10)
+        else:
+            result = int(str_val, base_val)
+
         ctx.stack.push_value(JoyValue.integer(result))
     except ValueError:
         ctx.stack.push_value(JoyValue.integer(0))

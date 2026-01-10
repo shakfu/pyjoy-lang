@@ -98,6 +98,7 @@ class CEmitter:
             #include <stdio.h>
             #include <stdlib.h>
             #include <string.h>
+            #include <math.h>
             #include "joy_runtime.h"
         """)
 
@@ -120,6 +121,14 @@ class CEmitter:
             return f"joy_integer({value.value})"
 
         elif value.type == "float":
+            import math
+            if math.isinf(value.value):
+                if value.value > 0:
+                    return "joy_float(INFINITY)"
+                else:
+                    return "joy_float(-INFINITY)"
+            elif math.isnan(value.value):
+                return "joy_float(NAN)"
             return f"joy_float({value.value})"
 
         elif value.type == "boolean":

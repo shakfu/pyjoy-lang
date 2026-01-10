@@ -273,6 +273,10 @@ def _joy_equals(a: Any, b: Any, strict: bool = True) -> bool:
             float_bits = _float_to_bits(b.value)
             return set_bits == float_bits
 
+        # FILE comparison: equal if same underlying file object
+        if a.type == JoyType.FILE and b.type == JoyType.FILE:
+            return a.value is b.value
+
     # Try numeric comparison (handles int, float, char, bool, set, empty list)
     av = _numeric_value(a)
     bv = _numeric_value(b)

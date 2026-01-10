@@ -49,6 +49,10 @@ class Scanner:
         # $(python expression) with nested parens
         ("PYTHON_DOLLAR", r"\$\((?:[^()]*|\([^()]*\))*\)"),
         ("PYTHON_STMT", r"!(?!=)[^\n]*"),  # !stmt (not !=)
+        # Special float literals must come before numeric float
+        # - for inf/nan: word boundary at end, negative lookahead for ==
+        # - for -inf: preceded by non-word char or start, word boundary at end
+        ("FLOAT_SPECIAL", r"(?:(?<![a-zA-Z0-9_])-inf|(?<![a-zA-Z0-9_])inf|(?<![a-zA-Z0-9_])nan)(?![a-zA-Z0-9_])(?!\s*==)"),  # inf, -inf, nan
         ("FLOAT", r"-?\d+\.\d+(?:[eE][+-]?\d+)?"),  # 3.14, -2.5e10
         ("INTEGER", r"-?\d+"),  # 42, -17
         ("STRING", r'"(?:[^"\\]|\\.)*"'),  # "hello"
@@ -161,6 +165,10 @@ class Scanner:
             # Convert token values
             elif kind == "INTEGER":
                 value = int(value)
+            elif kind == "FLOAT_SPECIAL":
+                # Convert inf, -inf, nan to float values
+                kind = "FLOAT"  # Normalize to FLOAT token type
+                value = float(value)
             elif kind == "FLOAT":
                 value = float(value)
             elif kind == "STRING":

@@ -31,6 +31,13 @@ Merged functionality from [pyjoy2](https://github.com/shakfu/pyjoy2) to support 
 
 ### Fixed
 
+- Test runner: Fixed false positive detection - now only detects "false" at line start (not in help/manual docs)
+- C backend: Float infinity/NaN now emit `INFINITY`/`-INFINITY`/`NAN` macros instead of invalid `inf` literals
+- `inf`/`-inf`/`nan`: Scanner now recognizes special float literals (with word boundary and definition lookahead)
+- `casting`: INT->FLOAT now uses bit-level reinterpretation (treats integer bits as IEEE 754 double)
+- `strtol`: Base-0 now auto-detects hex (0x prefix) and octal (0 prefix) like C's strtol
+- `sametype`: Two builtin symbols are only sametype if they have the same name
+- `fflush`/FILE equality: Added FILE comparison to `_joy_equals` using object identity
 - `argc`/`argv`: Now use Joy-specific argv (just the Joy filename when running a file)
 - `autoput`: Default value changed from 0 to 1 (enabled by default, matching Joy42)
 - `equal`: Now compares symbols and strings by their text content
@@ -100,8 +107,8 @@ Merged functionality from [pyjoy2](https://github.com/shakfu/pyjoy2) to support 
 
 ### Coverage
 
-- Python interpreter: 201/215 Joy tests passing (93.5%)
-- C backend: 199/215 Joy tests passing (92.6%)
+- Python interpreter: 209/215 Joy tests passing (97.2%)
+- C backend: 198/215 Joy tests passing (92.1%)
 - pytest: 712/712 unit tests passing (100%)
 
 ---

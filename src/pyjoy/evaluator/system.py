@@ -206,13 +206,16 @@ def abort_(ctx: ExecutionContext) -> None:
     raise SystemExit(1)
 
 
-@joy_word(name="quit", params=1, doc="I ->")
+@joy_word(name="quit", params=0, doc="[I] ->")
 def quit_(ctx: ExecutionContext) -> None:
-    """Exit with status code I."""
-    code = ctx.stack.pop()
-    if code.type != JoyType.INTEGER:
-        raise JoyTypeError("quit", "integer", code.type.name)
-    raise SystemExit(code.value)
+    """Exit with status code I (default 0 if stack empty)."""
+    if len(ctx.stack) > 0:
+        code = ctx.stack.pop()
+        if hasattr(code, "type") and code.type == JoyType.INTEGER:
+            raise SystemExit(code.value)
+        elif isinstance(code, int) and not isinstance(code, bool):
+            raise SystemExit(code)
+    raise SystemExit(0)
 
 
 @joy_word(name="gc", params=0, doc="->")

@@ -2,7 +2,7 @@
 
 ## Current Test Results
 
-**Python Interpreter:** 209/215 tests passing (97.2%)
+**Python Interpreter:** 210/215 tests passing (97.7%)
 **C Backend:** 205/215 tests passing (95.3%)
 **pytest (unit tests):** 712/712 passing (100%)
 
@@ -23,7 +23,7 @@ Note: Recent C backend fixes include autoput default, div/divmod, unstack, name,
 
 | Category | Count | Notes |
 |----------|-------|-------|
-| abort/quit behavior | 4 tests | Expected behavior (intentional exit codes) |
+| abort/quit behavior | 3 tests | Expected behavior (intentional exit codes) |
 | Interactive input | 1 test | `get.joy` needs stdin |
 
 ---

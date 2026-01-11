@@ -2,6 +2,9 @@
  * joy_primitives.c - Joy primitive operations implemented in C
  */
 
+/* Enable POSIX functions like strdup */
+#define _POSIX_C_SOURCE 200809L
+
 #include "joy_runtime.h"
 #include <stdio.h>
 #include <stdlib.h>

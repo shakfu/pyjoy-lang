@@ -86,9 +86,6 @@ class CBuilder:
         # Add include path for runtime
         cmd.append(f"-I{self.runtime_dir}")
 
-        # Add math library
-        cmd.append("-lm")
-
         # Add runtime sources
         cmd.extend(str(p) for p in self.get_runtime_sources())
 
@@ -97,6 +94,9 @@ class CBuilder:
 
         # Output
         cmd.extend(["-o", str(output)])
+
+        # Add math library AFTER sources (GCC requires libraries after objects)
+        cmd.append("-lm")
 
         # Run compilation
         result = subprocess.run(cmd, capture_output=True, text=True)

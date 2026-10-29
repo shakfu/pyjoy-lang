@@ -273,13 +273,7 @@ make test-joy
 uv run pyjoy test tests/joy --compile
 ```
 
-### Test Results
-
-| Backend | Passing | Total | Coverage |
-|---------|---------|-------|----------|
-| Python Interpreter | 194 | 215 | 90.2% |
-| C Backend | 199 | 215 | 92.6% |
-| pytest (unit) | 712 | 712 | 100% |
+See [README.md](../README.md#test-results) for current results.
 
 ## Performance Notes
 

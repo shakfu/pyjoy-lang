@@ -212,7 +212,7 @@ END.
 | `put` | Same | Same | Print top |
 | `putch` | Same | Same | Print character |
 | `putchars` | Same | Same | Print string |
-| `.` | Same | Same | Print with newline |
+| `.` | Same | Same | Pop and print top with newline; no-op on empty stack. Inside `DEFINE`/`LIBRA`, ends the block |
 | `get` | Same | Same | Read token |
 | `getch` | Same | Same | Read character |
 | `fopen`, `fclose` | Same | Same | File handle operations |

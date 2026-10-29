@@ -121,9 +121,11 @@ uv run pyjoy test tests/joy --compile
 
 | Backend | Passing | Total | Coverage |
 | ------- | ------- | ----- | -------- |
-| Python Interpreter | 194 | 215 | 90.2% |
-| C Backend | 199 | 215 | 92.6% |
+| Python Interpreter | 210 | 215 | 97.7% |
+| C Backend | 213 | 215 | 99.1% |
 | pytest (unit tests) | 712 | 712 | 100% |
+
+Four Joy test failures are expected: three tests exit through `abort`/`quit`, and `get.joy` needs stdin.
 
 ### Primitives
 
@@ -278,6 +280,7 @@ pyjoy-lang/
     pythonic-mode.md    # Python integration guide
     comparison-with-joy.md  # Word comparison tables
     tutorial.md         # Getting started
+    dev/                # Developer notes
 ```
 
 ## Documentation
